@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6c5ce7">
+  <title>구구단 챌린지</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="game-shell">
+    <header>
+      <p class="eyebrow">MULTIPLICATION GAME</p>
+      <h1>구구단 챌린지</h1>
+      <p class="subtitle">60초 동안 최대한 많이 맞혀 보세요!</p>
+    </header>
+
+    <section class="scoreboard" aria-label="게임 현황">
+      <div><span>남은 시간</span><strong id="time">60</strong></div>
+      <div><span>점수</span><strong id="score">0</strong></div>
+      <div><span>연속 정답</span><strong id="streak">0</strong></div>
+    </section>
+
+    <section class="card" id="start-screen">
+      <h2>난이도를 골라 주세요</h2>
+      <div class="difficulty" role="group" aria-label="난이도 선택">
+        <button class="difficulty-btn selected" data-level="easy">
+          <strong>쉬움</strong><span>2단 ~ 5단</span>
+        </button>
+        <button class="difficulty-btn" data-level="normal">
+          <strong>보통</strong><span>2단 ~ 9단</span>
+        </button>
+        <button class="difficulty-btn" data-level="hard">
+          <strong>어려움</strong><span>2단 ~ 19단</span>
+        </button>
+      </div>
+      <button class="primary-btn" id="start-btn">게임 시작</button>
+    </section>
+
+    <section class="card hidden" id="game-screen" aria-live="polite">
+      <p class="question-label">이 문제의 답은?</p>
+      <div class="question"><span id="left-number">2</span><span>×</span><span id="right-number">3</span></div>
+      <form id="answer-form" autocomplete="off">
+        <label class="sr-only" for="answer">정답</label>
+        <input id="answer" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" placeholder="정답 입력" required>
+        <button type="submit" class="primary-btn">확인</button>
+      </form>
+      <p id="feedback" class="feedback">정답을 입력해 주세요</p>
+    </section>
+
+    <section class="card result hidden" id="result-screen">
+      <div class="trophy" aria-hidden="true">🏆</div>
+      <h2>게임 종료!</h2>
+      <p>최종 점수</p>
+      <strong id="final-score">0점</strong>
+      <p id="result-message">멋진 도전이었어요!</p>
+      <button class="primary-btn" id="restart-btn">다시 도전</button>
+    </section>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
