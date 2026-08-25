@@ -175,7 +175,7 @@ function update(dt) {
   Object.keys(game.cooldowns).forEach(k=>game.cooldowns[k]=Math.max(0,game.cooldowns[k]-dt));
   if(game.enemyTimer<=0){ spawnEnemy(); game.enemyTimer=game.enemySpawn*(.82+Math.random()*.4)*Math.max(.62,1-game.time/360); }
   updateArmy(game.units,game.enemies,1,dt); updateArmy(game.enemies,game.units,-1,dt);
-  game.projectiles.forEach(p=>{ p.x+=p.speed*dt; p.life-=dt; const targets=p.targetSide==='cat'?game.units:game.enemies;const target=targets.find(e=>e.id===p.targetId); if(target&&Math.abs(target.x-p.x)<18){ damage(target,p.damage,p.x,p.y); p.life=0; }});
+  updateProjectiles(dt);
   game.projectiles=game.projectiles.filter(p=>p.life>0);
   game.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=80*dt;p.life-=dt;}); game.particles=game.particles.filter(p=>p.life>0); game.shake=Math.max(0,game.shake-dt*12);
   removeDead(); if(game.playerHp<=0) finish(false); if(game.enemyHp<=0) finish(true);
@@ -192,7 +192,22 @@ function updateArmy(army,opponents,direction,dt) {
   });
 }
 function findTarget(unit,opponents,direction){ return opponents.filter(e=>direction===1?e.x>=unit.x:e.x<=unit.x).sort((a,b)=>Math.abs(a.x-unit.x)-Math.abs(b.x-unit.x)).find(e=>Math.abs(e.x-unit.x)<=unit.range); }
-function shoot(unit,target){ game.projectiles.push({x:unit.x,y:unit.y-35,speed:target.x>=unit.x?230:-230,targetId:target.id,targetSide:target.side,damage:unit.damage,life:1.5,color:unit.side==='cat'?'#f7dcff':'#ff7b8d'}); playTone(unit.side==='cat'?700:180,.08,'sine',.04); }
+function shoot(unit,target){ game.projectiles.push({x:unit.x,y:unit.y-35,speed:230,direction:target.x>=unit.x?1:-1,targetId:target.id,targetSide:target.side,damage:unit.damage,life:4,color:unit.side==='cat'?'#f7dcff':'#ff7b8d'}); playTone(unit.side==='cat'?700:180,.08,'sine',.04); }
+function updateProjectiles(dt){
+  const width=canvas.viewWidth||800;
+  game.projectiles.forEach(projectile=>{
+    projectile.life-=dt;const targets=projectile.targetSide==='cat'?game.units:game.enemies;
+    let target=targets.find(unit=>unit.id===projectile.targetId&&unit.hp>0);
+    if(!target&&targets.length){target=[...targets].filter(unit=>unit.hp>0).sort((a,b)=>Math.abs(a.x-projectile.x)-Math.abs(b.x-projectile.x))[0];projectile.targetId=target?.id;}
+    const targetX=target?target.x:(projectile.targetSide==='cat'?70:width-70),targetY=target?target.y-30:groundY()-45;
+    const dx=targetX-projectile.x,dy=targetY-projectile.y,distance=Math.hypot(dx,dy),step=projectile.speed*dt;
+    if(distance<=step+12){
+      if(target)damage(target,projectile.damage,target.x,target.y);else{if(projectile.targetSide==='cat')game.playerHp-=projectile.damage;else game.enemyHp-=projectile.damage;burst(targetX,targetY,projectile.color);game.shake=3;}
+      projectile.life=0;return;
+    }
+    projectile.x+=dx/distance*step;projectile.y+=dy/distance*step;
+  });
+}
 function damage(target,amount,x,y){ target.hp-=amount; target.hit=.12; burst(x,y,target.side==='cat'?'#fff0bd':'#ff9d76'); playHit(.035); }
 function removeDead(){
   game.enemies=game.enemies.filter(e=>{if(e.hp>0)return true;game.money=Math.min(game.maxMoney,game.money+e.reward);burst(e.x,e.y,'#ffd447',10);return false;});
