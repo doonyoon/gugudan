@@ -16,6 +16,7 @@
       </div>
       <div class="top-actions">
         <div class="gold-display" title="보유 골드"><span>🪙</span><strong id="gold">0</strong></div>
+        <button id="lineup-button" class="icon-button lineup-icon" type="button" aria-label="출전 슬롯 편성">편성</button>
         <button id="gacha-button" class="icon-button gacha-icon" type="button" aria-label="캐릭터 뽑기">🎁</button>
         <button id="sound-button" class="icon-button" type="button" aria-label="소리 끄기">🔊</button>
         <button id="help-button" class="icon-button" type="button" aria-label="도움말">?</button>
@@ -89,7 +90,7 @@
       <div class="capsule" id="capsule"><span>🐾</span></div>
       <div class="confetti" id="confetti"></div>
     </div>
-    <div class="gacha-result" id="gacha-result">새 캐릭터 4종이 기다리고 있어요!</div>
+    <div class="gacha-result" id="gacha-result">다양한 등급의 고양이가 기다리고 있어요!</div>
     <button id="draw-button" class="main-button" type="button">1회 뽑기 · 300 🪙</button>
     <div class="rate-table" aria-label="뽑기 등급별 확률">
       <span>노멀 <b>50%</b></span><span>EX <b>25%</b></span><span>레어 <b>9%</b></span>
@@ -101,6 +102,14 @@
       <small id="coupon-message">특별 코드를 입력해 보세요.</small>
     </form>
     <div class="collection" id="collection"></div>
+  </dialog>
+  <dialog id="lineup-dialog" class="lineup-dialog">
+    <button class="dialog-close" id="close-lineup" type="button" aria-label="닫기">×</button>
+    <h2>출전 슬롯 편성</h2>
+    <p>교체할 슬롯을 누르고 보유 캐릭터를 선택하세요.</p>
+    <div class="lineup-slots" id="lineup-slots"></div>
+    <h3>보유 캐릭터</h3>
+    <div class="roster" id="roster"></div>
   </dialog>
   <script src="game.js"></script>
 </body>

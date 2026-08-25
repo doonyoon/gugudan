@@ -13,6 +13,7 @@ h1 { margin:1px 0 0; font:clamp(1.7rem,4vw,2.5rem)/1 "Black Han Sans",sans-serif
 .top-actions { display:flex; align-items:center; gap:8px; }
 .gold-display { min-width:82px; height:42px; display:flex; align-items:center; justify-content:center; gap:5px; padding:0 10px; border:2px solid #66572c; border-radius:14px; background:#292415; color:var(--yellow); }
 .gacha-icon { background:linear-gradient(145deg,#6d3c87,#392551); }
+.lineup-icon { width:54px; background:linear-gradient(145deg,#315f73,#213646); font-size:.72rem; }
 .icon-button { width:46px; height:46px; border:2px solid #596081; border-radius:14px; background:#22263e; color:#fff; font-weight:900; cursor:pointer; box-shadow:0 4px 0 #080a12; }
 .icon-button:active { transform:translateY(3px); box-shadow:0 1px 0 #080a12; }
 .hud { display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:end; padding:9px 12px; border:2px solid #454b70; border-radius:15px; background:rgba(18,21,40,.9); }
@@ -70,6 +71,9 @@ select { padding:9px 12px; border:2px solid #6c7397; border-radius:10px; backgro
 .unit-card:active:not(:disabled) { transform:translateY(3px); box-shadow:0 2px 0 #070912; }
 .unit-card:disabled { filter:grayscale(.8); opacity:.5; }
 .unit-card strong,.unit-card small,.unit-card em { display:block; position:relative; z-index:2; }
+.unit-card sup { padding:1px 3px; border-radius:4px; background:#59617f; font-size:.55rem; }
+.rarity-badge { display:block; position:absolute; z-index:3; top:5px; left:5px; padding:2px 4px; border-radius:4px; background:#555d7a; color:#fff; font-size:.53rem; font-style:normal; }
+.rarity-badge.legend { background:#a36e00;color:#fff1a8 }.rarity-badge.ultra { background:#256f91;color:#d6f5ff }.rarity-badge.super { background:#70459a;color:#f0ddff }.rarity-badge.rare { background:#9a4c62;color:#ffe0e8 }.rarity-badge.ex { background:#397164;color:#d9fff5 }
 .unit-card small { color:#aeb5d2; font-size:.67rem; }
 .unit-card em { margin-top:3px; color:var(--yellow); font-size:.78rem; font-style:normal; font-weight:700; }
 .unit-portrait { display:block; width:38px; height:38px; margin:0 auto 2px; border:2px solid #101323; border-radius:50%; background:#fff0bd; color:#17192a; font-size:1.5rem; font-weight:900; line-height:34px; }
@@ -108,6 +112,17 @@ dialog li { margin:10px 0; line-height:1.6; }
 .collection { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:12px; }
 .collection span { padding:7px 2px; border-radius:8px; background:#111426; color:#7e85a5; font-size:.7rem; }
 .collection span.owned { color:#fff; background:#394060; }
+.collection b { display:block; margin-bottom:2px; color:var(--yellow); font-size:.58rem; }
+.lineup-dialog { width:min(680px,calc(100% - 24px)); max-height:88svh; overflow-y:auto; }
+.lineup-dialog>p { color:#b7bed8; }.lineup-dialog h3 { margin-bottom:8px; }
+.lineup-slots { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:18px 0; }
+.slot-card,.roster-card { position:relative; min-height:92px; padding:9px 5px; border:2px solid #50587d; border-radius:11px; background:#222741; color:#fff; cursor:pointer; text-align:center; }
+.slot-card.selected { border-color:var(--yellow); box-shadow:0 0 0 3px rgba(255,212,71,.18); }
+.slot-card span,.slot-card strong,.roster-card span,.roster-card strong,.roster-card small { display:block; }
+.slot-card span:first-child,.roster-card span:first-child { font-size:1.5rem; }
+.slot-card small,.roster-card small { color:#aeb5d2; font-size:.62rem; }
+.roster { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; }
+.roster-card.equipped { border-color:#55d6be; background:#29463f; }
 @keyframes shake-capsule { 25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)} }
 @keyframes power-shake { 0%{transform:translate(-6px,2px) rotate(-7deg)}50%{transform:translate(7px,-2px) rotate(7deg)}100%{transform:translate(-4px,-1px) rotate(-5deg)} }
 @keyframes capsule-glow { to{box-shadow:0 0 45px 16px rgba(255,226,84,.8)} }
@@ -125,7 +140,10 @@ dialog li { margin:10px 0; line-height:1.6; }
 @media (max-width:650px) {
   .app { gap:7px; }
   .topbar { min-height:50px; }
+  .topbar h1 { font-size:1.45rem; }
+  .kicker { display:none; }
   .icon-button { width:40px; height:40px; }
+  .lineup-icon { width:46px; }
   .hud { gap:7px; padding:7px; }
   .base-status strong { font-size:.58rem; }
   .stage-info strong { font-size:1rem; }
@@ -143,9 +161,13 @@ dialog li { margin:10px 0; line-height:1.6; }
   .unit-portrait { width:34px; height:34px; line-height:30px; font-size:1.2rem; }
 }
 @media (max-width:420px) {
-  .gold-display { min-width:66px; padding:0 6px; font-size:.82rem; }
+  .top-actions { gap:4px; }
+  .icon-button { width:36px; height:38px; padding:0; }
+  .lineup-icon { width:43px; }
+  .gold-display { min-width:58px; height:38px; padding:0 4px; font-size:.75rem; }
   .stage-picker { grid-template-columns:repeat(5,1fr); gap:4px; }
   .stage-button { min-height:38px; padding:2px; font-size:.75rem; }
+  .roster { grid-template-columns:repeat(3,1fr); }.lineup-slots{gap:4px}.slot-card{min-height:82px;font-size:.7rem;padding:6px 2px}
 }
 @media (max-height:700px) and (orientation:landscape) {
   .app { display:grid; grid-template-columns:1fr 240px; grid-template-rows:auto 1fr auto; }

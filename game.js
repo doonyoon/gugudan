@@ -3,11 +3,11 @@ const ctx = canvas.getContext('2d');
 const $ = (selector) => document.querySelector(selector);
 
 const UNIT_TYPES = {
-  runner: { cost: 50, hp: 80, damage: 14, speed: 58, range: 34, cooldown: 1.2, rate: .65, color: '#fff0bd', label: '날쌘냥' },
-  tank: { cost: 120, hp: 360, damage: 22, speed: 25, range: 38, cooldown: 3.2, rate: 1.1, color: '#c8e7ff', label: '방패냥' },
-  fighter: { cost: 200, hp: 210, damage: 72, speed: 37, range: 48, cooldown: 4.2, rate: 1.25, color: '#ffc3a7', label: '검객냥' },
-  mage: { cost: 350, hp: 140, damage: 58, speed: 24, range: 145, cooldown: 6, rate: 1.55, color: '#e3c8ff', label: '별빛냥', ranged: true }
-  ,ninja: { cost: 280, hp: 155, damage: 46, speed: 76, range: 42, cooldown: 4.8, rate: .42, color: '#c8c5df', label: '닌자냥', icon: '忍', desc: '초고속 연타', rarity: '레어' }
+  runner: { cost: 50, hp: 80, damage: 14, speed: 58, range: 34, cooldown: 1.2, rate: .65, color: '#fff0bd', label: '날쌘냥', rarity:'기본' },
+  tank: { cost: 120, hp: 360, damage: 22, speed: 25, range: 38, cooldown: 3.2, rate: 1.1, color: '#c8e7ff', label: '방패냥', rarity:'기본' },
+  fighter: { cost: 200, hp: 210, damage: 72, speed: 37, range: 48, cooldown: 4.2, rate: 1.25, color: '#ffc3a7', label: '검객냥', rarity:'기본' },
+  mage: { cost: 350, hp: 140, damage: 58, speed: 24, range: 145, cooldown: 6, rate: 1.55, color: '#e3c8ff', label: '별빛냥', rarity:'기본', ranged: true }
+  ,ninja: { cost: 380, hp: 190, damage: 62, speed: 76, range: 42, cooldown: 5.2, rate: .42, color: '#c8c5df', label: '닌자냥', icon: '忍', desc: '초고속 연타', rarity: '레어' }
   ,dragon: { cost: 520, hp: 330, damage: 115, speed: 22, range: 185, cooldown: 8, rate: 1.8, color: '#b7efcb', label: '용냥', icon: '龍', desc: '초장거리 포격', rarity: '슈퍼 레어', ranged: true }
   ,gunner: { cost: 420, hp: 190, damage: 82, speed: 31, range: 125, cooldown: 6.5, rate: .85, color: '#ffe69a', label: '기관냥', icon: '✹', desc: '빠른 원거리', rarity: '레어', ranged: true }
   ,titan: { cost: 700, hp: 1050, damage: 168, speed: 15, range: 55, cooldown: 12, rate: 1.7, color: '#ffb0b0', label: '거신냥', icon: '大', desc: '압도적인 체력', rarity: '슈퍼 레어' }
@@ -77,13 +77,14 @@ const SAVE_KEY = 'cat-fortress-save-v2';
 
 let progress = loadProgress();
 let selectedStage = Math.min(progress.highestStage, 9);
+let selectedLineupSlot = 0;
 
 let game = null, animationId = null, lastTime = 0, audio = null, soundOn = true;
 let unitButtons = [];
 
 function createGame() {
   const settings = STAGES[selectedStage];
-  return { running:true, time:0, money:150, maxMoney:1000, income:34, workerLevel:1, playerHp:2500, playerMaxHp:2500, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:1.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.owned.map(type=>[type,0])), training:Object.fromEntries(progress.owned.map(type=>[type,0])), shake:0, result:null };
+  return { running:true, time:0, money:150, maxMoney:1000, income:34, workerLevel:1, playerHp:2500, playerMaxHp:2500, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:1.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), shake:0, result:null };
 }
 
 function resizeCanvas() {
@@ -103,10 +104,12 @@ $('#close-gacha').addEventListener('click', () => $('#gacha-dialog').close());
 $('#draw-button').addEventListener('click', drawGacha);
 $('#exit-battle').addEventListener('click', exitBattle);
 $('#coupon-form').addEventListener('submit', redeemCoupon);
+$('#lineup-button').addEventListener('click', openLineup);
+$('#close-lineup').addEventListener('click', () => $('#lineup-dialog').close());
 
 function loadProgress(){
-  const fallback={gold:0,highestStage:0,cleared:[],owned:[...BASIC_UNITS],levels:{runner:1,tank:1,fighter:1,mage:1},redeemedCodes:[]};
-  try{const saved=JSON.parse(localStorage.getItem(SAVE_KEY));if(!saved)return fallback;return {...fallback,...saved,owned:[...new Set([...BASIC_UNITS,...(saved.owned||[])])],levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
+  const fallback={gold:0,highestStage:0,cleared:[],owned:[...BASIC_UNITS],loadout:[...BASIC_UNITS],levels:{runner:1,tank:1,fighter:1,mage:1},redeemedCodes:[]};
+  try{const saved=JSON.parse(localStorage.getItem(SAVE_KEY));if(!saved)return fallback;const owned=[...new Set([...BASIC_UNITS,...(saved.owned||[])])],loadout=(saved.loadout||BASIC_UNITS).filter(type=>owned.includes(type)).slice(0,4);while(loadout.length<4){const next=BASIC_UNITS.find(type=>!loadout.includes(type));loadout.push(next);}return {...fallback,...saved,owned,loadout,levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
 }
 function saveProgress(){localStorage.setItem(SAVE_KEY,JSON.stringify(progress));renderMeta();}
 function renderMeta(){
@@ -117,10 +120,20 @@ function renderMeta(){
   renderDeck();renderCollection();
 }
 function renderDeck(){
-  $('#unit-deck').innerHTML=progress.owned.map(type=>{const u=UNIT_TYPES[type],icon=u.icon||({runner:'ฅ',tank:'◉',fighter:'⚔',mage:'✦'}[type]);return `<button class="unit-card" data-unit="${type}" type="button"><span class="unit-portrait ${type}">${icon}</span><strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
+  $('#unit-deck').innerHTML=progress.loadout.map(type=>{const u=UNIT_TYPES[type],icon=unitIcon(type);return `<button class="unit-card" data-unit="${type}" type="button"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i><span class="unit-portrait ${type}">${icon}</span><strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
   unitButtons=[...document.querySelectorAll('.unit-card')];unitButtons.forEach(b=>b.addEventListener('click',()=>summon(b.dataset.unit)));
 }
-function renderCollection(){if(!$('#collection'))return;$('#collection').innerHTML=GACHA_UNITS.map(type=>`<span class="${progress.owned.includes(type)?'owned':''}">${progress.owned.includes(type)?UNIT_TYPES[type].label:'???'}<br>${progress.owned.includes(type)?`Lv.${progress.levels[type]}`:UNIT_TYPES[type].rarity}</span>`).join('');}
+function unitIcon(type){return UNIT_TYPES[type].icon||({runner:'ฅ',tank:'◉',fighter:'⚔',mage:'✦'}[type]);}
+function rarityClass(rarity){return rarity==='레전드 레어'?'legend':rarity==='울트라 슈퍼 레어'?'ultra':rarity==='슈퍼 레어'?'super':rarity==='레어'?'rare':rarity==='EX'?'ex':'normal';}
+function renderCollection(){if(!$('#collection'))return;$('#collection').innerHTML=GACHA_UNITS.map(type=>{const u=UNIT_TYPES[type],owned=progress.owned.includes(type);return `<span class="${owned?'owned':''}"><b>${u.rarity}</b>${owned?u.label:'???'}<br>${owned?`Lv.${progress.levels[type]}`:'미획득'}</span>`;}).join('');}
+function openLineup(){selectedLineupSlot=0;renderLineup();$('#lineup-dialog').showModal();}
+function renderLineup(){
+  $('#lineup-slots').innerHTML=progress.loadout.map((type,index)=>{const u=UNIT_TYPES[type];return `<button class="slot-card ${index===selectedLineupSlot?'selected':''}" data-slot="${index}" type="button"><small>SLOT ${index+1}</small><span>${unitIcon(type)}</span><strong>${u.label}</strong><small>${u.rarity} · ${u.cost}🐟</small></button>`;}).join('');
+  $('#roster').innerHTML=progress.owned.map(type=>{const u=UNIT_TYPES[type];return `<button class="roster-card ${progress.loadout.includes(type)?'equipped':''}" data-roster="${type}" type="button"><span>${unitIcon(type)}</span><strong>${u.label}</strong><small>${u.rarity} · ${u.cost}🐟</small></button>`;}).join('');
+  document.querySelectorAll('.slot-card').forEach(button=>button.onclick=()=>{selectedLineupSlot=Number(button.dataset.slot);renderLineup();});
+  document.querySelectorAll('.roster-card').forEach(button=>button.onclick=()=>equipUnit(button.dataset.roster));
+}
+function equipUnit(type){const other=progress.loadout.indexOf(type),current=progress.loadout[selectedLineupSlot];if(other>=0){progress.loadout[other]=current;}progress.loadout[selectedLineupSlot]=type;saveProgress();renderLineup();}
 function openGacha(){renderCollection();$('#gacha-result').textContent='전설의 고양이에게 도전해 보세요!';$('#gacha-stage').className='gacha-stage';$('#confetti').innerHTML='';$('#coupon-message').textContent='특별 코드를 입력해 보세요.';$('#coupon-message').className='';$('#draw-button').disabled=progress.gold<300;$('#gacha-dialog').showModal();}
 function rollGacha(randomValue=Math.random()){
   const roll=Math.min(999,Math.floor(randomValue*1000));
@@ -197,7 +210,7 @@ function upgradeWorker(){ if(!game?.running||game.workerLevel>=8)return;const co
 function workerCost(){return 150+(game?.workerLevel||1)*100;}
 function trainingCost(type){const level=game?.training[type]||0;return Math.round((80+UNIT_TYPES[type].cost*.5)*Math.pow(1.55,level)/10)*10;}
 function renderTraining(){
-  if(!game)return;$('#upgrade-deck').innerHTML=progress.owned.map(type=>`<button class="upgrade-button" data-upgrade="${type}" type="button"><strong>${UNIT_TYPES[type].label} +${game.training[type]}</strong><span>${game.training[type]>=5?'MAX':`${trainingCost(type)} 🐟`}</span></button>`).join('');
+  if(!game)return;$('#upgrade-deck').innerHTML=progress.loadout.map(type=>`<button class="upgrade-button" data-upgrade="${type}" type="button"><strong>${UNIT_TYPES[type].label} +${game.training[type]}</strong><span>${game.training[type]>=5?'MAX':`${trainingCost(type)} 🐟`}</span></button>`).join('');
   document.querySelectorAll('.upgrade-button').forEach(button=>button.onclick=()=>upgradeUnit(button.dataset.upgrade));
 }
 function upgradeUnit(type){
