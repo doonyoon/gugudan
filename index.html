@@ -15,6 +15,8 @@
         <h1>고양이 성채전</h1>
       </div>
       <div class="top-actions">
+        <div class="gold-display" title="보유 골드"><span>🪙</span><strong id="gold">0</strong></div>
+        <button id="gacha-button" class="icon-button gacha-icon" type="button" aria-label="캐릭터 뽑기">🎁</button>
         <button id="sound-button" class="icon-button" type="button" aria-label="소리 끄기">🔊</button>
         <button id="help-button" class="icon-button" type="button" aria-label="도움말">?</button>
       </div>
@@ -40,14 +42,9 @@
       <div class="start-overlay" id="start-overlay">
         <div class="logo-cat" aria-hidden="true"><span>•</span><span>ᴗ</span><span>•</span></div>
         <h2>고양이 부대를 지휘하세요!</h2>
-        <p>물고기를 모아 유닛을 소환하고 적 요새를 무너뜨리세요.</p>
-        <label>난이도
-          <select id="difficulty">
-            <option value="easy">느긋한 초원</option>
-            <option value="normal" selected>발톱 평원</option>
-            <option value="hard">광란의 밤</option>
-          </select>
-        </label>
+        <p>물고기를 모아 유닛을 소환하고 10개 지역을 정복하세요.</p>
+        <div class="stage-picker" id="stage-picker" aria-label="스테이지 선택"></div>
+        <p class="stage-description" id="stage-description"></p>
         <button id="start-button" class="main-button" type="button">출격!</button>
       </div>
     </section>
@@ -65,20 +62,7 @@
       </div>
     </section>
 
-    <section class="unit-deck" aria-label="유닛 선택">
-      <button class="unit-card" data-unit="runner" type="button">
-        <span class="unit-portrait runner">ฅ</span><strong>날쌘냥</strong><small>빠른 돌격</small><em>50 🐟</em><i class="cooldown"></i>
-      </button>
-      <button class="unit-card" data-unit="tank" type="button">
-        <span class="unit-portrait tank">◉</span><strong>방패냥</strong><small>높은 체력</small><em>120 🐟</em><i class="cooldown"></i>
-      </button>
-      <button class="unit-card" data-unit="fighter" type="button">
-        <span class="unit-portrait fighter">⚔</span><strong>검객냥</strong><small>강한 공격</small><em>200 🐟</em><i class="cooldown"></i>
-      </button>
-      <button class="unit-card" data-unit="mage" type="button">
-        <span class="unit-portrait mage">✦</span><strong>별빛냥</strong><small>원거리 공격</small><em>350 🐟</em><i class="cooldown"></i>
-      </button>
-    </section>
+    <section class="unit-deck" id="unit-deck" aria-label="보유 유닛"></section>
   </main>
 
   <dialog id="help-dialog">
@@ -90,6 +74,15 @@
       <li>낚시터를 강화하면 생산 속도와 최대 보유량이 증가합니다.</li>
       <li>우리 성채가 파괴되기 전에 적 요새를 무너뜨리면 승리합니다.</li>
     </ol>
+  </dialog>
+  <dialog id="gacha-dialog" class="gacha-dialog">
+    <button class="dialog-close" id="close-gacha" type="button" aria-label="닫기">×</button>
+    <h2>황금 발바닥 뽑기</h2>
+    <p>전투에서 얻은 골드로 새로운 고양이를 만나 보세요.</p>
+    <div class="capsule" id="capsule">🐾</div>
+    <div class="gacha-result" id="gacha-result">새 캐릭터 4종이 기다리고 있어요!</div>
+    <button id="draw-button" class="main-button" type="button">1회 뽑기 · 300 🪙</button>
+    <div class="collection" id="collection"></div>
   </dialog>
   <script src="game.js"></script>
 </body>
