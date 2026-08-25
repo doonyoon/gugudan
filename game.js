@@ -42,16 +42,16 @@ const ENEMY_STAGE_POOLS = [
   ['boar','gorilla','ghost'],['gorilla','rhino','ghost'],['rhino','ghost','mech'],['ghost','mech','demon'],['rhino','mech','demon']
 ];
 const STAGES = [
-  { name:'햇살 초원', enemyHp:1700, spawn:3.2, scale:.78, reward:100 },
-  { name:'바람 언덕', enemyHp:2100, spawn:2.9, scale:.88, reward:140 },
-  { name:'붉은 협곡', enemyHp:2500, spawn:2.65, scale:1, reward:190 },
-  { name:'달빛 늪지', enemyHp:3000, spawn:2.4, scale:1.12, reward:250 },
-  { name:'강철 도시', enemyHp:3600, spawn:2.18, scale:1.25, reward:320 },
-  { name:'얼음 성벽', enemyHp:4300, spawn:2, scale:1.4, reward:410 },
-  { name:'화염 분지', enemyHp:5100, spawn:1.82, scale:1.58, reward:510 },
-  { name:'폭풍 요새', enemyHp:6100, spawn:1.65, scale:1.78, reward:630 },
-  { name:'황혼 왕국', enemyHp:7300, spawn:1.48, scale:2.02, reward:780 },
-  { name:'별의 최후', enemyHp:9000, spawn:1.3, scale:2.3, reward:1000 }
+  { name:'햇살 초원', enemyHp:1100, spawn:4.1, scale:.58, reward:100 },
+  { name:'바람 언덕', enemyHp:1500, spawn:3.7, scale:.68, reward:140 },
+  { name:'붉은 협곡', enemyHp:1900, spawn:3.35, scale:.78, reward:190 },
+  { name:'달빛 늪지', enemyHp:2350, spawn:3.05, scale:.9, reward:250 },
+  { name:'강철 도시', enemyHp:2900, spawn:2.75, scale:1.02, reward:320 },
+  { name:'얼음 성벽', enemyHp:3500, spawn:2.5, scale:1.15, reward:410 },
+  { name:'화염 분지', enemyHp:4200, spawn:2.28, scale:1.3, reward:510 },
+  { name:'폭풍 요새', enemyHp:5000, spawn:2.08, scale:1.46, reward:630 },
+  { name:'황혼 왕국', enemyHp:6000, spawn:1.88, scale:1.65, reward:780 },
+  { name:'별의 최후', enemyHp:7300, spawn:1.7, scale:1.88, reward:1000 }
 ];
 const STAGE_THEMES = [
   { sky1:'#72c9f4',sky2:'#dff6d5',ground:'#63a34f',hill:'#4f873f',accent:'#fff2a8',kind:'sun' },
@@ -84,7 +84,7 @@ let unitButtons = [];
 
 function createGame() {
   const settings = STAGES[selectedStage];
-  return { running:true, time:0, money:150, maxMoney:1000, income:34, workerLevel:1, playerHp:2500, playerMaxHp:2500, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:1.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), shake:0, result:null };
+  return { running:true, time:0, money:250, maxMoney:1200, income:45, workerLevel:1, playerHp:3200, playerMaxHp:3200, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.5, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), shake:0, result:null };
 }
 
 function resizeCanvas() {
@@ -218,7 +218,7 @@ function spawnEnemy(){
   const pool=ENEMY_STAGE_POOLS[selectedStage];game.spawnCount++;
   let type=pool[Math.floor(Math.random()*pool.length)];
   if(selectedStage>=4&&game.spawnCount%10===0)type=pool[pool.length-1];
-  const e=ENEMY_TYPES[type],waveBoost=1+Math.min(.65,game.time/240);
+  const e=ENEMY_TYPES[type],waveBoost=1+Math.min(.35,game.time/300);
   game.enemies.push({...e,id:crypto.randomUUID(),side:'enemy',kind:type,x:(canvas.viewWidth||800)-82,y:groundY(),attack:.4,hp:Math.round(e.hp*game.enemyScale*waveBoost),maxHp:Math.round(e.hp*game.enemyScale*waveBoost),damage:Math.round(e.damage*game.enemyScale*waveBoost)});
 }
 function upgradeWorker(){ if(!game?.running||game.workerLevel>=8)return;const cost=workerCost();if(game.money<cost)return;game.money-=cost;game.workerLevel++;game.income+=15;game.maxMoney+=250;playJingle([523,659]); }
