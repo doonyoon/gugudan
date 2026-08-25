@@ -15,6 +15,16 @@ const UNIT_TYPES = {
   ,chef: { cost: 240, hp: 260, damage: 54, speed: 30, range: 62, cooldown: 4.5, rate: .9, color: '#d9f0ef', label: '요리사냥', icon: '♨', desc: '균형 잡힌 공격', rarity: 'EX' }
   ,cosmic: { cost: 950, hp: 620, damage: 250, speed: 27, range: 220, cooldown: 15, rate: 2.1, color: '#a8d8ff', label: '은하냥', icon: '☄', desc: '은하의 초장거리 공격', rarity: '울트라 슈퍼 레어', ranged: true }
   ,emperor: { cost: 1400, hp: 1800, damage: 440, speed: 20, range: 250, cooldown: 22, rate: 2.3, color: '#ffdb73', label: '황제냥', icon: '♛', desc: '전설의 절대 공격', rarity: '레전드 레어', ranged: true }
+  ,farmer: { cost: 75, hp: 105, damage: 18, speed: 38, range: 38, cooldown: 1.8, rate: .62, color: '#d8e6af', label: '농부냥', icon: '♧', desc: '성실한 근접 공격', rarity: '노멀' }
+  ,sleepy: { cost: 110, hp: 180, damage: 26, speed: 18, range: 42, cooldown: 2.8, rate: 1, color: '#ddd7ee', label: '잠꾸러기냥', icon: 'Z', desc: '느리지만 튼튼함', rarity: '노멀' }
+  ,pirate: { cost: 260, hp: 225, damage: 63, speed: 34, range: 75, cooldown: 5, rate: 1, color: '#d7c0a8', label: '해적냥', icon: '☠', desc: '중거리 대포 공격', rarity: 'EX', ranged: true }
+  ,medic: { cost: 290, hp: 310, damage: 48, speed: 28, range: 55, cooldown: 5.5, rate: .85, color: '#f7dce4', label: '의무냥', icon: '+', desc: '튼튼한 지원 전투', rarity: 'EX' }
+  ,samurai: { cost: 390, hp: 340, damage: 105, speed: 42, range: 52, cooldown: 7, rate: 1.1, color: '#b9c7dd', label: '사무라이냥', icon: '刀', desc: '날카로운 일격', rarity: '레어' }
+  ,rocket: { cost: 460, hp: 180, damage: 95, speed: 30, range: 165, cooldown: 7.5, rate: 1.35, color: '#ffc99d', label: '로켓냥', icon: '▲', desc: '강력한 원거리 포격', rarity: '레어', ranged: true }
+  ,phantom: { cost: 680, hp: 370, damage: 185, speed: 58, range: 70, cooldown: 10, rate: .95, color: '#c6b3e8', label: '유령냥', icon: '◈', desc: '빠르고 강한 기습', rarity: '슈퍼 레어' }
+  ,paladin: { cost: 760, hp: 1250, damage: 145, speed: 20, range: 68, cooldown: 13, rate: 1.45, color: '#e8e2bd', label: '성기사냥', icon: '♜', desc: '철벽의 수호자', rarity: '슈퍼 레어' }
+  ,phoenix: { cost: 1100, hp: 780, damage: 310, speed: 45, range: 195, cooldown: 17, rate: 1.65, color: '#ffad77', label: '불사조냥', icon: '♨', desc: '불꽃 초장거리 공격', rarity: '울트라 슈퍼 레어', ranged: true }
+  ,chronos: { cost: 1550, hp: 1550, damage: 520, speed: 26, range: 280, cooldown: 24, rate: 2, color: '#9ee8e3', label: '시간신냥', icon: '⌛', desc: '시간을 초월한 포격', rarity: '레전드 레어', ranged: true }
 };
 const ENEMY_TYPES = {
   pup: { hp: 95, damage: 13, speed: 34, range: 34, rate: .8, reward: 28, color: '#d9a66f' },
@@ -35,7 +45,7 @@ const STAGES = [
 ];
 const BASIC_UNITS = ['runner','tank','fighter','mage'];
 const GACHA_POOLS = {
-  '노멀':['boxer'], 'EX':['chef'], '레어':['ninja','gunner'], '슈퍼 레어':['dragon','titan'], '울트라 슈퍼 레어':['cosmic'], '레전드 레어':['emperor']
+  '노멀':['boxer','farmer','sleepy'], 'EX':['chef','pirate','medic'], '레어':['ninja','gunner','samurai','rocket'], '슈퍼 레어':['dragon','titan','phantom','paladin'], '울트라 슈퍼 레어':['cosmic','phoenix'], '레전드 레어':['emperor','chronos']
 };
 const GACHA_RATES = [
   {rarity:'노멀',rate:50},{rarity:'EX',rate:25},{rarity:'레어',rate:9},{rarity:'슈퍼 레어',rate:10.7},{rarity:'울트라 슈퍼 레어',rate:5},{rarity:'레전드 레어',rate:.3}
@@ -106,6 +116,7 @@ function startBattle() {
 }
 function exitBattle(){
   if(!game?.running)return;
+  if(!window.confirm('현재 전투를 포기하고 인트로로 돌아갈까요?\n사용한 물고기와 전투 강화는 사라집니다.'))return;
   game.running=false;cancelAnimationFrame(animationId);game=null;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');renderMeta();playTone(220,.2,'triangle',.06);
 }
 function loop(now) {

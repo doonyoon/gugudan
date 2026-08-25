@@ -76,13 +76,16 @@ select { padding:9px 12px; border:2px solid #6c7397; border-radius:10px; backgro
 .unit-portrait.tank { background:#c8e7ff; }.unit-portrait.fighter { background:#ffc3a7; }.unit-portrait.mage { background:#e3c8ff; }
 .unit-portrait.ninja { background:#c8c5df; }.unit-portrait.dragon { background:#b7efcb; }.unit-portrait.gunner { background:#ffe69a; }.unit-portrait.titan { background:#ffb0b0; }
 .unit-portrait.boxer { background:#f1e5c6; }.unit-portrait.chef { background:#d9f0ef; }.unit-portrait.cosmic { background:#a8d8ff; }.unit-portrait.emperor { background:#ffdb73; }
+.unit-portrait.farmer { background:#d8e6af; }.unit-portrait.sleepy { background:#ddd7ee; }.unit-portrait.pirate { background:#d7c0a8; }.unit-portrait.medic { background:#f7dce4; }
+.unit-portrait.samurai { background:#b9c7dd; }.unit-portrait.rocket { background:#ffc99d; }.unit-portrait.phantom { background:#c6b3e8; }.unit-portrait.paladin { background:#e8e2bd; }
+.unit-portrait.phoenix { background:#ffad77; }.unit-portrait.chronos { background:#9ee8e3; }
 .cooldown { position:absolute; inset:auto 0 0; height:0%; background:rgba(8,10,20,.72); pointer-events:none; }
 dialog { width:min(520px,calc(100% - 28px)); border:2px solid #697096; border-radius:18px; background:#1c2038; color:#fff; box-shadow:0 20px 70px #000; }
 dialog::backdrop { background:rgba(5,7,15,.75); backdrop-filter:blur(4px); }
 dialog h2 { font-family:"Black Han Sans",sans-serif; }
 dialog li { margin:10px 0; line-height:1.6; }
 .dialog-close { position:absolute; top:10px; right:12px; border:0; background:none; color:#fff; font-size:1.8rem; cursor:pointer; }
-.gacha-dialog { text-align:center; }
+.gacha-dialog { max-height:88svh; overflow-y:auto; text-align:center; }
 .gacha-dialog h2 { margin-bottom:4px; }
 .gacha-dialog p { color:#c4c9df; }
 .capsule { width:110px; height:110px; display:grid; place-items:center; margin:16px auto; border:5px solid #b88620; border-radius:50%; background:radial-gradient(circle at 35% 30%,#fff6b5,#ffd447 45%,#c57622); font-size:3.3rem; box-shadow:0 0 30px rgba(255,212,71,.38); }
