@@ -41,7 +41,7 @@ let unitButtons = [];
 
 function createGame() {
   const settings = STAGES[selectedStage];
-  return { running:true, time:0, money:150, maxMoney:1000, income:34, workerLevel:1, playerHp:2500, playerMaxHp:2500, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:1.8, enemySpawn:settings.spawn, enemyScale:settings.scale, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.owned.map(type=>[type,0])), shake:0, result:null };
+  return { running:true, time:0, money:150, maxMoney:1000, income:34, workerLevel:1, playerHp:2500, playerMaxHp:2500, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:1.8, enemySpawn:settings.spawn, enemyScale:settings.scale, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.owned.map(type=>[type,0])), training:Object.fromEntries(progress.owned.map(type=>[type,0])), shake:0, result:null };
 }
 
 function resizeCanvas() {
@@ -59,6 +59,7 @@ $('#sound-button').addEventListener('click', () => { soundOn=!soundOn; $('#sound
 $('#gacha-button').addEventListener('click', openGacha);
 $('#close-gacha').addEventListener('click', () => $('#gacha-dialog').close());
 $('#draw-button').addEventListener('click', drawGacha);
+$('#exit-battle').addEventListener('click', exitBattle);
 
 function loadProgress(){
   const fallback={gold:0,highestStage:0,cleared:[],owned:[...BASIC_UNITS],levels:{runner:1,tank:1,fighter:1,mage:1}};
@@ -85,7 +86,11 @@ function drawGacha(){
 }
 
 function startBattle() {
-  initAudio(); game=createGame(); $('#stage-label').textContent=`STAGE ${selectedStage+1}`; $('#start-overlay').classList.add('hidden'); $('#battle-message').classList.add('hidden'); lastTime=performance.now(); cancelAnimationFrame(animationId); animationId=requestAnimationFrame(loop); playJingle([392,523,659]);
+  initAudio(); game=createGame(); $('#stage-label').textContent=`STAGE ${selectedStage+1}`; $('#start-overlay').classList.add('hidden'); $('#battle-message').classList.add('hidden'); $('#exit-battle').classList.remove('hidden'); $('#training-panel').classList.remove('hidden'); renderTraining(); lastTime=performance.now(); cancelAnimationFrame(animationId); animationId=requestAnimationFrame(loop); playJingle([392,523,659]);
+}
+function exitBattle(){
+  if(!game?.running)return;
+  game.running=false;cancelAnimationFrame(animationId);game=null;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');renderMeta();playTone(220,.2,'triangle',.06);
 }
 function loop(now) {
   const dt=Math.min((now-lastTime)/1000,.04); lastTime=now; if(game?.running) update(dt); draw(); updateUI(); if(game?.running) animationId=requestAnimationFrame(loop);
@@ -118,12 +123,22 @@ function removeDead(){
   game.enemies=game.enemies.filter(e=>{if(e.hp>0)return true;game.money=Math.min(game.maxMoney,game.money+e.reward);burst(e.x,e.y,'#ffd447',10);return false;});
   game.units=game.units.filter(e=>{if(e.hp>0)return true;burst(e.x,e.y,'#dff6ff',8);return false;});
 }
-function summon(type){ if(!game?.running)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,boost=1+(level-1)*.08;if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown;game.units.push({...u,id:crypto.randomUUID(),side:'cat',x:82+Math.random()*8,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost)});playTone(440,.1,'triangle',.08); }
+function summon(type){ if(!game?.running)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,training=game.training[type]||0,boost=(1+(level-1)*.08)*(1+training*.15);if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown;game.units.push({...u,unitType:type,id:crypto.randomUUID(),side:'cat',x:82+Math.random()*8,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost)});playTone(440,.1,'triangle',.08); }
 function spawnEnemy(){ const roll=Math.random();const type=game.time>28&&roll>.72?'boar':game.time>12&&roll>.45?'bird':'pup';const e=ENEMY_TYPES[type];game.enemies.push({...e,id:crypto.randomUUID(),side:'enemy',kind:type,x:(canvas.viewWidth||800)-82,y:groundY(),attack:.4,hp:e.hp*game.enemyScale,maxHp:e.hp*game.enemyScale,damage:e.damage*game.enemyScale}); }
 function upgradeWorker(){ if(!game?.running||game.workerLevel>=8)return;const cost=workerCost();if(game.money<cost)return;game.money-=cost;game.workerLevel++;game.income+=15;game.maxMoney+=250;playJingle([523,659]); }
 function workerCost(){return 150+(game?.workerLevel||1)*100;}
+function trainingCost(type){const level=game?.training[type]||0;return Math.round((80+UNIT_TYPES[type].cost*.5)*Math.pow(1.55,level)/10)*10;}
+function renderTraining(){
+  if(!game)return;$('#upgrade-deck').innerHTML=progress.owned.map(type=>`<button class="upgrade-button" data-upgrade="${type}" type="button"><strong>${UNIT_TYPES[type].label} +${game.training[type]}</strong><span>${game.training[type]>=5?'MAX':`${trainingCost(type)} 🐟`}</span></button>`).join('');
+  document.querySelectorAll('.upgrade-button').forEach(button=>button.onclick=()=>upgradeUnit(button.dataset.upgrade));
+}
+function upgradeUnit(type){
+  if(!game?.running||game.training[type]>=5)return;const cost=trainingCost(type);if(game.money<cost)return;game.money-=cost;game.training[type]++;
+  game.units.filter(unit=>unit.unitType===type).forEach(unit=>{const oldMax=unit.maxHp;unit.maxHp=Math.round(unit.maxHp*1.15);unit.hp=Math.round(unit.hp+unit.maxHp-oldMax);unit.damage=Math.round(unit.damage*1.15);});
+  renderTraining();playJingle([440,554,659],.07);
+}
 function finish(win){
-  game.running=false;game.result=win;let reward=0;
+  game.running=false;game.result=win;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');let reward=0;
   if(win){reward=STAGES[selectedStage].reward;progress.gold+=reward;if(!progress.cleared.includes(selectedStage))progress.cleared.push(selectedStage);progress.highestStage=Math.max(progress.highestStage,Math.min(9,selectedStage+1));saveProgress();}
   const box=$('#battle-message');box.innerHTML=`<span>${win?'승리!':'패배...'}</span>${win?`<small>+${reward} 골드 🪙</small>`:''}<button class="main-button" id="retry-button">스테이지 선택</button>`;box.classList.remove('hidden');
   $('#retry-button').onclick=()=>{$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');renderMeta();};playJingle(win?[523,659,784,1047]:[330,247,196],.18);
@@ -140,7 +155,7 @@ function drawProjectile(p){ctx.fillStyle='#f7dcff';ctx.shadowColor='#b46cff';ctx
 function burst(x,y,color,count=5){for(let i=0;i<count;i++)game.particles.push({x,y:y-28,vx:(Math.random()-.5)*100,vy:-30-Math.random()*90,life:.35+Math.random()*.35,color});}
 function drawParticle(p){ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,5,5);ctx.globalAlpha=1;}
 
-function updateUI(){if(!game)return;$('#money').textContent=Math.floor(game.money);$('#max-money').textContent=game.maxMoney;$('#money-bar').style.width=`${game.money/game.maxMoney*100}%`;$('#worker-level').textContent=game.workerLevel;$('#worker-cost').textContent=game.workerLevel>=8?'MAX':`${workerCost()} 🐟`;$('#worker-button').disabled=!game.running||game.workerLevel>=8||game.money<workerCost();$('#battle-time').textContent=`${String(Math.floor(game.time/60)).padStart(2,'0')}:${String(Math.floor(game.time%60)).padStart(2,'0')}`;setHealth('player',game.playerHp,game.playerMaxHp);setHealth('enemy',game.enemyHp,game.enemyMaxHp);unitButtons.forEach(b=>{const type=b.dataset.unit,u=UNIT_TYPES[type],cd=game.cooldowns[type]||0;b.disabled=!game.running||game.money<u.cost||cd>0;b.querySelector('.cooldown').style.height=`${cd/u.cooldown*100}%`;});}
+function updateUI(){if(!game)return;$('#money').textContent=Math.floor(game.money);$('#max-money').textContent=game.maxMoney;$('#money-bar').style.width=`${game.money/game.maxMoney*100}%`;$('#worker-level').textContent=game.workerLevel;$('#worker-cost').textContent=game.workerLevel>=8?'MAX':`${workerCost()} 🐟`;$('#worker-button').disabled=!game.running||game.workerLevel>=8||game.money<workerCost();$('#battle-time').textContent=`${String(Math.floor(game.time/60)).padStart(2,'0')}:${String(Math.floor(game.time%60)).padStart(2,'0')}`;setHealth('player',game.playerHp,game.playerMaxHp);setHealth('enemy',game.enemyHp,game.enemyMaxHp);unitButtons.forEach(b=>{const type=b.dataset.unit,u=UNIT_TYPES[type],cd=game.cooldowns[type]||0;b.disabled=!game.running||game.money<u.cost||cd>0;b.querySelector('.cooldown').style.height=`${cd/u.cooldown*100}%`;});document.querySelectorAll('.upgrade-button').forEach(b=>{const type=b.dataset.upgrade;b.disabled=!game.running||game.training[type]>=5||game.money<trainingCost(type);});}
 function setHealth(side,hp,max){$(`#${side}-health-bar`).style.width=`${Math.max(0,hp/max*100)}%`;$(`#${side}-health-text`).textContent=`${Math.max(0,Math.ceil(hp)).toLocaleString()} / ${max.toLocaleString()}`;}
 
 function initAudio(){if(!soundOn)return;if(!audio){const A=window.AudioContext||window.webkitAudioContext;if(A)audio=new A();}if(audio?.state==='suspended')audio.resume();}

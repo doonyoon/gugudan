@@ -25,6 +25,7 @@ h1 { margin:1px 0 0; font:clamp(1.7rem,4vw,2.5rem)/1 "Black Han Sans",sans-serif
 .stage-info { text-align:center; }
 .stage-info span { display:block; color:var(--yellow); font-size:.7rem; font-weight:700; }
 .stage-info strong { font:1.25rem "Black Han Sans",sans-serif; }
+.exit-button { display:block; margin:3px auto 0; padding:2px 9px; border:1px solid #e18596; border-radius:6px; background:#4b2330; color:#ffd7df; font-size:.65rem; cursor:pointer; }
 .battlefield { position:relative; flex:1; min-height:330px; max-height:600px; overflow:hidden; border:3px solid #080a14; border-radius:18px; background:#98d9ef; box-shadow:0 12px 35px rgba(0,0,0,.35); }
 #game-canvas { display:block; width:100%; height:100%; }
 .start-overlay { position:absolute; inset:0; z-index:4; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:22px; text-align:center; background:linear-gradient(rgba(14,17,32,.68),rgba(14,17,32,.88)); backdrop-filter:blur(5px); }
@@ -56,6 +57,14 @@ select { padding:9px 12px; border:2px solid #6c7397; border-radius:10px; backgro
 .money-box span { font-size:.72rem; color:#aeb5d2; }
 .money-box strong { font-size:1.08rem; text-align:right; }
 .money-track i { background:linear-gradient(90deg,var(--orange),var(--yellow)); }
+.training-panel { display:grid; grid-template-columns:145px 1fr; gap:10px; align-items:center; padding:8px 10px; border:2px solid #4c5276; border-radius:14px; background:#191d34; }
+.training-title strong,.training-title small { display:block; }
+.training-title small { color:#9fa7c8; font-size:.65rem; }
+.upgrade-deck { display:flex; gap:6px; overflow-x:auto; padding:2px; }
+.upgrade-button { min-width:104px; padding:7px 8px; border:1px solid #646c96; border-radius:9px; background:#2b3151; color:#fff; cursor:pointer; font-size:.72rem; }
+.upgrade-button strong,.upgrade-button span { display:block; }
+.upgrade-button span { color:var(--yellow); font-size:.67rem; }
+.upgrade-button:disabled { opacity:.4; cursor:not-allowed; }
 .unit-deck { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(118px,1fr); gap:9px; overflow-x:auto; padding-bottom:5px; scrollbar-color:#596081 #171a30; }
 .unit-card { position:relative; min-height:105px; overflow:hidden; padding:8px 7px; border:2px solid #4d5478; border-radius:15px; background:linear-gradient(145deg,#2b304d,#181b30); color:#fff; cursor:pointer; box-shadow:0 5px 0 #070912; }
 .unit-card:active:not(:disabled) { transform:translateY(3px); box-shadow:0 2px 0 #070912; }
@@ -92,6 +101,8 @@ dialog li { margin:10px 0; line-height:1.6; }
   .stage-info strong { font-size:1rem; }
   .battlefield { min-height:300px; max-height:none; }
   .command-panel { grid-template-columns:1fr; }
+  .training-panel { grid-template-columns:1fr; gap:5px; }
+  .training-title { display:flex; justify-content:space-between; align-items:center; }
   .worker-card,.money-box { min-height:54px; }
   .money-box { order:-1; }
   .unit-deck { grid-template-columns:repeat(4,1fr); gap:5px; }
@@ -109,4 +120,5 @@ dialog li { margin:10px 0; line-height:1.6; }
 @media (max-height:700px) and (orientation:landscape) {
   .app { display:grid; grid-template-columns:1fr 240px; grid-template-rows:auto 1fr auto; }
   .topbar { grid-column:1/3; min-height:42px; }.kicker{display:none}.hud{grid-column:1/2}.battlefield{grid-column:1/2;min-height:240px}.command-panel{grid-column:2;grid-row:2;display:flex;flex-direction:column}.unit-deck{grid-column:1/3}.unit-card{min-height:76px}.unit-portrait{display:inline-block;margin:0 4px 0 0;vertical-align:middle}.unit-card small{display:none}
+  .training-panel{grid-column:2;grid-row:2;margin-top:120px;align-self:end;max-height:120px}.upgrade-deck{display:grid;grid-template-columns:1fr 1fr}.upgrade-button{min-width:0}
 }

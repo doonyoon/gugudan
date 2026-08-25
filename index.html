@@ -28,7 +28,7 @@
         <div class="health-track"><i id="enemy-health-bar"></i></div>
         <strong id="enemy-health-text">2,500 / 2,500</strong>
       </div>
-      <div class="stage-info"><span id="stage-label">STAGE 1</span><strong id="battle-time">00:00</strong></div>
+      <div class="stage-info"><span id="stage-label">STAGE 1</span><strong id="battle-time">00:00</strong><button id="exit-battle" class="exit-button hidden" type="button">퇴각</button></div>
       <div class="base-status player-status">
         <span>우리 성채</span>
         <div class="health-track"><i id="player-health-bar"></i></div>
@@ -60,6 +60,11 @@
         <strong><b id="money">0</b> / <b id="max-money">1000</b> 🐟</strong>
         <div class="money-track"><i id="money-bar"></i></div>
       </div>
+    </section>
+
+    <section class="training-panel hidden" id="training-panel">
+      <div class="training-title"><strong>전투 훈련</strong><small>🐟 물고기로 이번 전투 동안 강화</small></div>
+      <div class="upgrade-deck" id="upgrade-deck"></div>
     </section>
 
     <section class="unit-deck" id="unit-deck" aria-label="보유 유닛"></section>
