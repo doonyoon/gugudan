@@ -88,8 +88,19 @@ dialog li { margin:10px 0; line-height:1.6; }
 .gacha-dialog { max-height:88svh; overflow-y:auto; text-align:center; }
 .gacha-dialog h2 { margin-bottom:4px; }
 .gacha-dialog p { color:#c4c9df; }
-.capsule { width:110px; height:110px; display:grid; place-items:center; margin:16px auto; border:5px solid #b88620; border-radius:50%; background:radial-gradient(circle at 35% 30%,#fff6b5,#ffd447 45%,#c57622); font-size:3.3rem; box-shadow:0 0 30px rgba(255,212,71,.38); }
-.capsule.drawing { animation:shake-capsule .12s linear infinite; }
+.gacha-stage { position:relative; width:220px; height:170px; display:grid; place-items:center; margin:5px auto; overflow:hidden; }
+.gacha-rays { position:absolute; width:190px; height:190px; opacity:0; background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.8) 0 8deg,transparent 8deg 18deg); border-radius:50%; }
+.capsule { position:relative; z-index:2; width:110px; height:110px; display:grid; place-items:center; border:5px solid #b88620; border-radius:50%; background:radial-gradient(circle at 35% 30%,#fff6b5,#ffd447 45%,#c57622); font-size:3.3rem; box-shadow:0 0 30px rgba(255,212,71,.38); }
+.capsule::after { content:""; position:absolute; left:-4px; right:-4px; top:47px; height:9px; border:3px solid #8d5b18; background:#fff2a3; }
+.capsule span { position:relative; z-index:1; }
+.capsule.drawing { animation:power-shake .1s linear infinite, capsule-glow .45s ease-in-out infinite alternate; }
+.gacha-stage.revealing .gacha-rays { opacity:1; animation:ray-spin 1.2s linear infinite; }
+.gacha-stage.revealing .capsule { animation:capsule-pop .75s ease forwards; }
+.gacha-stage.legend { filter:drop-shadow(0 0 18px #ffdf59); }
+.gacha-stage.ultra { filter:drop-shadow(0 0 18px #68d9ff); }
+.gacha-stage.super { filter:drop-shadow(0 0 16px #c987ff); }
+.confetti { position:absolute; inset:0; z-index:4; pointer-events:none; }
+.confetti i { position:absolute; left:50%; top:50%; width:7px; height:14px; border-radius:2px; background:var(--color); animation:confetti-burst .9s ease-out forwards; transform:rotate(var(--rotate)); }
 .gacha-result { min-height:48px; margin:10px 0; font-weight:700; color:var(--yellow); }
 .rate-table { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:14px; }
 .rate-table span { padding:5px 3px; border-radius:7px; background:#111426; color:#bbc1db; font-size:.66rem; }
@@ -98,6 +109,18 @@ dialog li { margin:10px 0; line-height:1.6; }
 .collection span { padding:7px 2px; border-radius:8px; background:#111426; color:#7e85a5; font-size:.7rem; }
 .collection span.owned { color:#fff; background:#394060; }
 @keyframes shake-capsule { 25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)} }
+@keyframes power-shake { 0%{transform:translate(-6px,2px) rotate(-7deg)}50%{transform:translate(7px,-2px) rotate(7deg)}100%{transform:translate(-4px,-1px) rotate(-5deg)} }
+@keyframes capsule-glow { to{box-shadow:0 0 45px 16px rgba(255,226,84,.8)} }
+@keyframes ray-spin { to{transform:rotate(360deg) scale(1.25)} }
+@keyframes capsule-pop { 0%{transform:scale(1)}45%{transform:scale(1.35)}70%{transform:scale(.2);opacity:1}100%{transform:scale(1.65);opacity:0} }
+@keyframes confetti-burst { to{transform:translate(var(--x),var(--y)) rotate(calc(var(--rotate) + 360deg));opacity:0} }
+.coupon-form { margin:12px 0 4px; padding:10px; border:1px solid #4e5578; border-radius:10px; background:#14172a; text-align:left; }
+.coupon-form label { display:block; margin-bottom:5px; font-size:.75rem; font-weight:700; color:#dce0f3; }
+.coupon-form div { display:grid; grid-template-columns:1fr 64px; gap:5px; }
+.coupon-form input { min-width:0; padding:8px 10px; border:1px solid #646d98; border-radius:7px; background:#222741; color:#fff; font-size:1rem; }
+.coupon-form button { border:0; border-radius:7px; background:var(--yellow); color:#17192a; font-weight:700; cursor:pointer; }
+.coupon-form small { display:block; min-height:18px; margin-top:5px; color:#9fa7c8; }
+.coupon-form small.success { color:#63e1bd; }.coupon-form small.error { color:#ff8da4; }
 
 @media (max-width:650px) {
   .app { gap:7px; }

@@ -84,13 +84,22 @@
     <button class="dialog-close" id="close-gacha" type="button" aria-label="닫기">×</button>
     <h2>황금 발바닥 뽑기</h2>
     <p>전투에서 얻은 골드로 새로운 고양이를 만나 보세요.</p>
-    <div class="capsule" id="capsule">🐾</div>
+    <div class="gacha-stage" id="gacha-stage">
+      <div class="gacha-rays"></div>
+      <div class="capsule" id="capsule"><span>🐾</span></div>
+      <div class="confetti" id="confetti"></div>
+    </div>
     <div class="gacha-result" id="gacha-result">새 캐릭터 4종이 기다리고 있어요!</div>
     <button id="draw-button" class="main-button" type="button">1회 뽑기 · 300 🪙</button>
     <div class="rate-table" aria-label="뽑기 등급별 확률">
       <span>노멀 <b>50%</b></span><span>EX <b>25%</b></span><span>레어 <b>9%</b></span>
       <span>슈퍼 레어 <b>10.7%</b></span><span>울트라 슈퍼 레어 <b>5%</b></span><span>레전드 레어 <b>0.3%</b></span>
     </div>
+    <form class="coupon-form" id="coupon-form">
+      <label for="coupon-code">선물 코드</label>
+      <div><input id="coupon-code" type="text" inputmode="numeric" maxlength="12" placeholder="코드 입력" autocomplete="off"><button type="submit">입력</button></div>
+      <small id="coupon-message">특별 코드를 입력해 보세요.</small>
+    </form>
     <div class="collection" id="collection"></div>
   </dialog>
   <script src="game.js"></script>

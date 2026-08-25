@@ -102,9 +102,10 @@ $('#gacha-button').addEventListener('click', openGacha);
 $('#close-gacha').addEventListener('click', () => $('#gacha-dialog').close());
 $('#draw-button').addEventListener('click', drawGacha);
 $('#exit-battle').addEventListener('click', exitBattle);
+$('#coupon-form').addEventListener('submit', redeemCoupon);
 
 function loadProgress(){
-  const fallback={gold:0,highestStage:0,cleared:[],owned:[...BASIC_UNITS],levels:{runner:1,tank:1,fighter:1,mage:1}};
+  const fallback={gold:0,highestStage:0,cleared:[],owned:[...BASIC_UNITS],levels:{runner:1,tank:1,fighter:1,mage:1},redeemedCodes:[]};
   try{const saved=JSON.parse(localStorage.getItem(SAVE_KEY));if(!saved)return fallback;return {...fallback,...saved,owned:[...new Set([...BASIC_UNITS,...(saved.owned||[])])],levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
 }
 function saveProgress(){localStorage.setItem(SAVE_KEY,JSON.stringify(progress));renderMeta();}
@@ -120,7 +121,7 @@ function renderDeck(){
   unitButtons=[...document.querySelectorAll('.unit-card')];unitButtons.forEach(b=>b.addEventListener('click',()=>summon(b.dataset.unit)));
 }
 function renderCollection(){if(!$('#collection'))return;$('#collection').innerHTML=GACHA_UNITS.map(type=>`<span class="${progress.owned.includes(type)?'owned':''}">${progress.owned.includes(type)?UNIT_TYPES[type].label:'???'}<br>${progress.owned.includes(type)?`Lv.${progress.levels[type]}`:UNIT_TYPES[type].rarity}</span>`).join('');}
-function openGacha(){renderCollection();$('#gacha-result').textContent='전설의 고양이에게 도전해 보세요!';$('#draw-button').disabled=progress.gold<300;$('#gacha-dialog').showModal();}
+function openGacha(){renderCollection();$('#gacha-result').textContent='전설의 고양이에게 도전해 보세요!';$('#gacha-stage').className='gacha-stage';$('#confetti').innerHTML='';$('#coupon-message').textContent='특별 코드를 입력해 보세요.';$('#coupon-message').className='';$('#draw-button').disabled=progress.gold<300;$('#gacha-dialog').showModal();}
 function rollGacha(randomValue=Math.random()){
   const roll=Math.min(999,Math.floor(randomValue*1000));
   let cursor=0,rarity=GACHA_RATES[GACHA_RATES.length-1].rarity;
@@ -129,8 +130,20 @@ function rollGacha(randomValue=Math.random()){
 }
 function drawGacha(){
   if(progress.gold<300)return;progress.gold-=300;const type=rollGacha(),isNew=!progress.owned.includes(type);if(isNew){progress.owned.push(type);progress.levels[type]=1;}else progress.levels[type]=(progress.levels[type]||1)+1;
-  const capsule=$('#capsule');capsule.classList.add('drawing');$('#draw-button').disabled=true;playJingle([392,494,587,784],.09);
-  setTimeout(()=>{capsule.classList.remove('drawing');$('#gacha-result').innerHTML=`<strong>${UNIT_TYPES[type].rarity} · ${UNIT_TYPES[type].label}</strong><br>${isNew?'새 캐릭터 획득!':`중복 획득! Lv.${progress.levels[type]} 강화`}`;saveProgress();$('#draw-button').disabled=progress.gold<300;},700);
+  const capsule=$('#capsule'),stage=$('#gacha-stage'),rarity=UNIT_TYPES[type].rarity;capsule.classList.add('drawing');stage.className='gacha-stage';$('#confetti').innerHTML='';$('#gacha-result').textContent='기운을 모으는 중...';$('#draw-button').disabled=true;playJingle([262,330,392,494,587,698],.075);
+  setTimeout(()=>{capsule.classList.remove('drawing');stage.classList.add('revealing',rarity==='레전드 레어'?'legend':rarity==='울트라 슈퍼 레어'?'ultra':rarity==='슈퍼 레어'?'super':'normal');createConfetti(rarity);playRevealSound(rarity);},750);
+  setTimeout(()=>{stage.classList.remove('revealing');$('#gacha-result').innerHTML=`<strong>${rarity} · ${UNIT_TYPES[type].label}</strong><br>${isNew?'새 캐릭터 획득!':`중복 획득! Lv.${progress.levels[type]} 강화`}`;saveProgress();$('#draw-button').disabled=progress.gold<300;},1500);
+}
+function createConfetti(rarity){
+  const colors=rarity==='레전드 레어'?['#ffd447','#fff','#ff8c42']:rarity==='울트라 슈퍼 레어'?['#67dbff','#a98cff','#fff']:['#ffd447','#ef476f','#55d6be','#8b7cff'];
+  const count=rarity==='레전드 레어'?45:28;$('#confetti').innerHTML=Array.from({length:count},(_,i)=>{const angle=Math.PI*2*i/count,distance=65+Math.random()*70;return `<i style="--x:${Math.cos(angle)*distance}px;--y:${Math.sin(angle)*distance}px;--rotate:${Math.random()*180}deg;--color:${colors[i%colors.length]}"></i>`;}).join('');
+}
+function playRevealSound(rarity){const notes=rarity==='레전드 레어'?[523,659,784,1047,1319]:rarity==='울트라 슈퍼 레어'?[440,554,659,880]:rarity==='슈퍼 레어'?[392,494,659]:[330,440,523];playJingle(notes,.09);}
+function redeemCoupon(event){
+  event.preventDefault();const input=$('#coupon-code'),message=$('#coupon-message'),code=input.value.trim();message.className='';
+  if(code!=='9027'){message.textContent='존재하지 않는 코드예요.';message.classList.add('error');playTone(140,.18,'sawtooth',.05);return;}
+  if(progress.redeemedCodes.includes(code)){message.textContent='이미 사용한 코드예요.';message.classList.add('error');return;}
+  progress.redeemedCodes.push(code);progress.gold+=10000;saveProgress();message.textContent='코드 성공! 10,000골드를 받았어요.';message.classList.add('success');input.value='';$('#draw-button').disabled=false;createConfetti('레전드 레어');playJingle([523,659,784,1047],.1);
 }
 
 function startBattle() {
