@@ -75,6 +75,7 @@ select { padding:9px 12px; border:2px solid #6c7397; border-radius:10px; backgro
 .unit-portrait { display:block; width:38px; height:38px; margin:0 auto 2px; border:2px solid #101323; border-radius:50%; background:#fff0bd; color:#17192a; font-size:1.5rem; font-weight:900; line-height:34px; }
 .unit-portrait.tank { background:#c8e7ff; }.unit-portrait.fighter { background:#ffc3a7; }.unit-portrait.mage { background:#e3c8ff; }
 .unit-portrait.ninja { background:#c8c5df; }.unit-portrait.dragon { background:#b7efcb; }.unit-portrait.gunner { background:#ffe69a; }.unit-portrait.titan { background:#ffb0b0; }
+.unit-portrait.boxer { background:#f1e5c6; }.unit-portrait.chef { background:#d9f0ef; }.unit-portrait.cosmic { background:#a8d8ff; }.unit-portrait.emperor { background:#ffdb73; }
 .cooldown { position:absolute; inset:auto 0 0; height:0%; background:rgba(8,10,20,.72); pointer-events:none; }
 dialog { width:min(520px,calc(100% - 28px)); border:2px solid #697096; border-radius:18px; background:#1c2038; color:#fff; box-shadow:0 20px 70px #000; }
 dialog::backdrop { background:rgba(5,7,15,.75); backdrop-filter:blur(4px); }
@@ -87,7 +88,10 @@ dialog li { margin:10px 0; line-height:1.6; }
 .capsule { width:110px; height:110px; display:grid; place-items:center; margin:16px auto; border:5px solid #b88620; border-radius:50%; background:radial-gradient(circle at 35% 30%,#fff6b5,#ffd447 45%,#c57622); font-size:3.3rem; box-shadow:0 0 30px rgba(255,212,71,.38); }
 .capsule.drawing { animation:shake-capsule .12s linear infinite; }
 .gacha-result { min-height:48px; margin:10px 0; font-weight:700; color:var(--yellow); }
-.collection { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:18px; }
+.rate-table { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:14px; }
+.rate-table span { padding:5px 3px; border-radius:7px; background:#111426; color:#bbc1db; font-size:.66rem; }
+.rate-table b { color:var(--yellow); }
+.collection { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:12px; }
 .collection span { padding:7px 2px; border-radius:8px; background:#111426; color:#7e85a5; font-size:.7rem; }
 .collection span.owned { color:#fff; background:#394060; }
 @keyframes shake-capsule { 25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)} }
