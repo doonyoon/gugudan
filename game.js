@@ -38,7 +38,7 @@ const GACHA_POOLS = {
   '노멀':['boxer'], 'EX':['chef'], '레어':['ninja','gunner'], '슈퍼 레어':['dragon','titan'], '울트라 슈퍼 레어':['cosmic'], '레전드 레어':['emperor']
 };
 const GACHA_RATES = [
-  {rarity:'노멀',rate:50},{rarity:'EX',rate:18},{rarity:'레어',rate:15},{rarity:'슈퍼 레어',rate:11.7},{rarity:'울트라 슈퍼 레어',rate:5},{rarity:'레전드 레어',rate:.3}
+  {rarity:'노멀',rate:50},{rarity:'EX',rate:25},{rarity:'레어',rate:9},{rarity:'슈퍼 레어',rate:10.7},{rarity:'울트라 슈퍼 레어',rate:5},{rarity:'레전드 레어',rate:.3}
 ];
 const GACHA_UNITS = Object.values(GACHA_POOLS).flat();
 const SAVE_KEY = 'cat-fortress-save-v2';
