@@ -2,61 +2,95 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#6c5ce7">
-  <title>구구단 챌린지</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#16192d">
+  <title>고양이 성채전</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="game-shell">
-    <header>
-      <p class="eyebrow">MULTIPLICATION GAME</p>
-      <h1>구구단 챌린지</h1>
-      <p class="subtitle">60초 동안 최대한 많이 맞혀 보세요!</p>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <p class="kicker">ORIGINAL CAT DEFENSE</p>
+        <h1>고양이 성채전</h1>
+      </div>
+      <div class="top-actions">
+        <button id="sound-button" class="icon-button" type="button" aria-label="소리 끄기">🔊</button>
+        <button id="help-button" class="icon-button" type="button" aria-label="도움말">?</button>
+      </div>
     </header>
 
-    <section class="scoreboard" aria-label="게임 현황">
-      <div><span>남은 시간</span><strong id="time">60</strong></div>
-      <div><span>점수</span><strong id="score">0</strong></div>
-      <div><span>연속 정답</span><strong id="streak">0</strong></div>
-    </section>
-
-    <section class="card" id="start-screen">
-      <h2>난이도를 골라 주세요</h2>
-      <div class="difficulty" role="group" aria-label="난이도 선택">
-        <button class="difficulty-btn selected" data-level="easy">
-          <strong>쉬움</strong><span>2단 ~ 5단</span>
-        </button>
-        <button class="difficulty-btn" data-level="normal">
-          <strong>보통</strong><span>2단 ~ 9단</span>
-        </button>
-        <button class="difficulty-btn" data-level="hard">
-          <strong>어려움</strong><span>2단 ~ 19단</span>
-        </button>
+    <section class="hud" aria-label="전투 정보">
+      <div class="base-status enemy-status">
+        <span>적 요새</span>
+        <div class="health-track"><i id="enemy-health-bar"></i></div>
+        <strong id="enemy-health-text">2,500 / 2,500</strong>
       </div>
-      <button class="primary-btn" id="start-btn">게임 시작</button>
+      <div class="stage-info"><span id="stage-label">STAGE 1</span><strong id="battle-time">00:00</strong></div>
+      <div class="base-status player-status">
+        <span>우리 성채</span>
+        <div class="health-track"><i id="player-health-bar"></i></div>
+        <strong id="player-health-text">2,500 / 2,500</strong>
+      </div>
     </section>
 
-    <section class="card hidden" id="game-screen" aria-live="polite">
-      <p class="question-label">이 문제의 답은?</p>
-      <div class="question"><span id="left-number">2</span><span>×</span><span id="right-number">3</span></div>
-      <form id="answer-form" autocomplete="off">
-        <label class="sr-only" for="answer">정답</label>
-        <input id="answer" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" placeholder="정답 입력" required>
-        <button type="submit" class="primary-btn">확인</button>
-      </form>
-      <p id="feedback" class="feedback">정답을 입력해 주세요</p>
+    <section class="battlefield" id="battlefield" aria-label="전투 화면">
+      <canvas id="game-canvas"></canvas>
+      <div class="battle-message hidden" id="battle-message" role="status"></div>
+      <div class="start-overlay" id="start-overlay">
+        <div class="logo-cat" aria-hidden="true"><span>•</span><span>ᴗ</span><span>•</span></div>
+        <h2>고양이 부대를 지휘하세요!</h2>
+        <p>물고기를 모아 유닛을 소환하고 적 요새를 무너뜨리세요.</p>
+        <label>난이도
+          <select id="difficulty">
+            <option value="easy">느긋한 초원</option>
+            <option value="normal" selected>발톱 평원</option>
+            <option value="hard">광란의 밤</option>
+          </select>
+        </label>
+        <button id="start-button" class="main-button" type="button">출격!</button>
+      </div>
     </section>
 
-    <section class="card result hidden" id="result-screen">
-      <div class="trophy" aria-hidden="true">🏆</div>
-      <h2>게임 종료!</h2>
-      <p>최종 점수</p>
-      <strong id="final-score">0점</strong>
-      <p id="result-message">멋진 도전이었어요!</p>
-      <button class="primary-btn" id="restart-btn">다시 도전</button>
+    <section class="command-panel">
+      <button id="worker-button" class="worker-card" type="button">
+        <span class="worker-icon">🎣</span>
+        <span><strong>낚시터 Lv.<b id="worker-level">1</b></strong><small>생산 속도 증가</small></span>
+        <em id="worker-cost">150</em>
+      </button>
+      <div class="money-box">
+        <span>보유 물고기</span>
+        <strong><b id="money">0</b> / <b id="max-money">1000</b> 🐟</strong>
+        <div class="money-track"><i id="money-bar"></i></div>
+      </div>
+    </section>
+
+    <section class="unit-deck" aria-label="유닛 선택">
+      <button class="unit-card" data-unit="runner" type="button">
+        <span class="unit-portrait runner">ฅ</span><strong>날쌘냥</strong><small>빠른 돌격</small><em>50 🐟</em><i class="cooldown"></i>
+      </button>
+      <button class="unit-card" data-unit="tank" type="button">
+        <span class="unit-portrait tank">◉</span><strong>방패냥</strong><small>높은 체력</small><em>120 🐟</em><i class="cooldown"></i>
+      </button>
+      <button class="unit-card" data-unit="fighter" type="button">
+        <span class="unit-portrait fighter">⚔</span><strong>검객냥</strong><small>강한 공격</small><em>200 🐟</em><i class="cooldown"></i>
+      </button>
+      <button class="unit-card" data-unit="mage" type="button">
+        <span class="unit-portrait mage">✦</span><strong>별빛냥</strong><small>원거리 공격</small><em>350 🐟</em><i class="cooldown"></i>
+      </button>
     </section>
   </main>
+
+  <dialog id="help-dialog">
+    <button class="dialog-close" id="close-help" type="button" aria-label="닫기">×</button>
+    <h2>전투 방법</h2>
+    <ol>
+      <li>물고기는 시간이 지나면 자동으로 모입니다.</li>
+      <li>아래 유닛 카드를 눌러 고양이를 출격시키세요.</li>
+      <li>낚시터를 강화하면 생산 속도와 최대 보유량이 증가합니다.</li>
+      <li>우리 성채가 파괴되기 전에 적 요새를 무너뜨리면 승리합니다.</li>
+    </ol>
+  </dialog>
   <script src="game.js"></script>
 </body>
 </html>
