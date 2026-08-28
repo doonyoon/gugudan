@@ -40,7 +40,7 @@ h1 { margin:1px 0 0; font:clamp(1.7rem,4vw,2.5rem)/1 "Black Han Sans",sans-serif
 .stage-info strong { font:1.25rem "Black Han Sans",sans-serif; }
 .exit-button { display:block; margin:3px auto 0; padding:2px 9px; border:1px solid #e18596; border-radius:6px; background:#4b2330; color:#ffd7df; font-size:.65rem; cursor:pointer; }
 .battlefield { position:relative; flex:1; min-height:330px; max-height:600px; overflow:hidden; border:3px solid #080a14; border-radius:18px; background:#98d9ef; box-shadow:0 12px 35px rgba(0,0,0,.35); }
-#game-canvas { display:block; width:100%; height:100%; }
+#game-canvas { position:absolute; inset:0; display:block; width:100%; height:100%; }
 .start-overlay { position:absolute; inset:0; z-index:4; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:22px; text-align:center; background:linear-gradient(rgba(14,17,32,.68),rgba(14,17,32,.88)); backdrop-filter:blur(5px); }
 .start-overlay h2 { margin:0; font:clamp(1.5rem,5vw,2.4rem) "Black Han Sans",sans-serif; }
 .start-overlay p { max-width:520px; margin:0; color:#e3e5f2; }

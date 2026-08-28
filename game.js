@@ -105,11 +105,14 @@ function createGame() {
 }
 
 function resizeCanvas() {
-  const rect = canvas.getBoundingClientRect(); const ratio = Math.min(devicePixelRatio || 1, 2);
-  canvas.width = Math.round(rect.width * ratio); canvas.height = Math.round(rect.height * ratio);
-  ctx.setTransform(ratio,0,0,ratio,0,0); canvas.viewWidth=rect.width; canvas.viewHeight=rect.height;
+  const battlefield=$('#battlefield'),width=battlefield.clientWidth,height=battlefield.clientHeight;
+  if(!width||!height)return;
+  const ratio = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
+  ctx.setTransform(ratio,0,0,ratio,0,0); canvas.viewWidth=width; canvas.viewHeight=height;
 }
-new ResizeObserver(resizeCanvas).observe(canvas);
+new ResizeObserver(resizeCanvas).observe($('#battlefield'));
+window.addEventListener('resize',resizeCanvas);
 
 $('#start-button').addEventListener('click', startBattle);
 $('#worker-button').addEventListener('click', upgradeWorker);
@@ -141,7 +144,7 @@ function authValues(){return {id:$('#auth-id').value.trim(),password:$('#auth-pa
 function validAccount(id,password,message){message.className='';if(!/^[A-Za-z0-9가-힣_]{3,16}$/.test(id)){message.textContent='아이디는 3~16자의 한글, 영문, 숫자, 밑줄만 사용할 수 있어요.';return false;}if(password.length<4){message.textContent='비밀번호는 4자 이상 입력하세요.';return false;}return true;}
 async function signupAccount(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const accounts=loadAccounts();if(accounts[id]){message.textContent='이미 사용 중인 아이디예요.';return;}const isFirstAccount=Object.keys(accounts).length===0;accounts[id]={password:await hashPassword(password),createdAt:Date.now()};localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));const oldSave=localStorage.getItem(SAVE_KEY);if(isFirstAccount&&oldSave&&!localStorage.getItem(`${SAVE_KEY}:${id}`))localStorage.setItem(`${SAVE_KEY}:${id}`,oldSave);message.textContent='회원가입 완료! 자동으로 로그인했어요.';message.className='success';activateAccount(id);}
 async function loginAccount(event){event.preventDefault();const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const account=loadAccounts()[id];if(!account||account.password!==await hashPassword(password)){message.textContent='아이디 또는 비밀번호가 맞지 않아요.';return;}activateAccount(id);}
-function activateAccount(id){activeUser=id;localStorage.setItem(AUTH_SESSION_KEY,id);progress=loadProgress();selectedStage=Math.min(progress.highestStage,9);game=null;setAuthView();renderMeta();resizeCanvas();draw();}
+function activateAccount(id){activeUser=id;localStorage.setItem(AUTH_SESSION_KEY,id);progress=loadProgress();selectedStage=Math.min(progress.highestStage,9);game=null;setAuthView();renderMeta();requestAnimationFrame(()=>{resizeCanvas();draw();});}
 function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;game=null;cancelAnimationFrame(animationId);activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());setAuthView();}
 function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
 
@@ -199,7 +202,7 @@ function redeemCoupon(event){
 }
 
 function startBattle() {
-  initAudio(); game=createGame(); $('#stage-label').textContent=`STAGE ${selectedStage+1}`; $('#start-overlay').classList.add('hidden'); $('#battle-message').classList.add('hidden'); $('#exit-battle').classList.remove('hidden'); $('#training-panel').classList.remove('hidden'); renderTraining(); lastTime=performance.now(); cancelAnimationFrame(animationId); animationId=requestAnimationFrame(loop); playJingle([392,523,659]);
+  initAudio();resizeCanvas();game=createGame(); $('#stage-label').textContent=`STAGE ${selectedStage+1}`; $('#start-overlay').classList.add('hidden'); $('#battle-message').classList.add('hidden'); $('#exit-battle').classList.remove('hidden'); $('#training-panel').classList.remove('hidden'); renderTraining(); lastTime=performance.now(); cancelAnimationFrame(animationId); animationId=requestAnimationFrame(loop); playJingle([392,523,659]);
 }
 function exitBattle(){
   if(!game?.running)return;
