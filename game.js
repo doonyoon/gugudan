@@ -1,6 +1,13 @@
 const canvas = document.querySelector('#game-canvas');
 const ctx = canvas.getContext('2d');
 const $ = (selector) => document.querySelector(selector);
+const CHARACTER_SPRITES = {
+  farmer:'farmer.png', ninja:'ninja.png', tank:'tank.png', boxer:'boxer.png', samurai:'samurai.png',
+  chef:'chef.png', cosmic:'cosmic.png', medic:'medic.png', sleepy:'sleepy.png', pirate:'pirate.png'
+};
+const spriteImages = Object.fromEntries(Object.entries(CHARACTER_SPRITES).map(([type,file]) => {
+  const image = new Image(); image.src = `assets/characters/${file}`; return [type,image];
+}));
 
 const UNIT_TYPES = {
   runner: { cost: 50, hp: 80, damage: 14, speed: 58, range: 34, cooldown: 1.2, rate: .65, color: '#fff0bd', label: '날쌘냥', rarity:'기본' },
@@ -120,16 +127,17 @@ function renderMeta(){
   renderDeck();renderCollection();
 }
 function renderDeck(){
-  $('#unit-deck').innerHTML=progress.loadout.map(type=>{const u=UNIT_TYPES[type],icon=unitIcon(type);return `<button class="unit-card" data-unit="${type}" type="button"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i><span class="unit-portrait ${type}">${icon}</span><strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
+  $('#unit-deck').innerHTML=progress.loadout.map(type=>{const u=UNIT_TYPES[type];return `<button class="unit-card" data-unit="${type}" type="button"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i>${unitPortrait(type)}<strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
   unitButtons=[...document.querySelectorAll('.unit-card')];unitButtons.forEach(b=>b.addEventListener('click',()=>summon(b.dataset.unit)));
 }
 function unitIcon(type){return UNIT_TYPES[type].icon||({runner:'ฅ',tank:'◉',fighter:'⚔',mage:'✦'}[type]);}
+function unitPortrait(type){const file=CHARACTER_SPRITES[type];return file?`<span class="unit-portrait sprite" style="background-image:url('assets/characters/${file}')"></span>`:`<span class="unit-portrait ${type}">${unitIcon(type)}</span>`;}
 function rarityClass(rarity){return rarity==='레전드 레어'?'legend':rarity==='울트라 슈퍼 레어'?'ultra':rarity==='슈퍼 레어'?'super':rarity==='레어'?'rare':rarity==='EX'?'ex':'normal';}
 function renderCollection(){if(!$('#collection'))return;$('#collection').innerHTML=GACHA_UNITS.map(type=>{const u=UNIT_TYPES[type],owned=progress.owned.includes(type);return `<span class="${owned?'owned':''}"><b>${u.rarity}</b>${owned?u.label:'???'}<br>${owned?`Lv.${progress.levels[type]}`:'미획득'}</span>`;}).join('');}
 function openLineup(){selectedLineupSlot=0;renderLineup();$('#lineup-dialog').showModal();}
 function renderLineup(){
-  $('#lineup-slots').innerHTML=progress.loadout.map((type,index)=>{const u=UNIT_TYPES[type];return `<button class="slot-card ${index===selectedLineupSlot?'selected':''}" data-slot="${index}" type="button"><small>SLOT ${index+1}</small><span>${unitIcon(type)}</span><strong>${u.label}</strong><small>${u.rarity} · ${u.cost}🐟</small></button>`;}).join('');
-  $('#roster').innerHTML=progress.owned.map(type=>{const u=UNIT_TYPES[type];return `<button class="roster-card ${progress.loadout.includes(type)?'equipped':''}" data-roster="${type}" type="button"><span>${unitIcon(type)}</span><strong>${u.label}</strong><small>${u.rarity} · ${u.cost}🐟</small></button>`;}).join('');
+  $('#lineup-slots').innerHTML=progress.loadout.map((type,index)=>{const u=UNIT_TYPES[type];return `<button class="slot-card ${index===selectedLineupSlot?'selected':''}" data-slot="${index}" type="button"><small>SLOT ${index+1}</small>${unitPortrait(type)}<strong>${u.label}</strong><small>${u.rarity} · ${u.cost}🐟</small></button>`;}).join('');
+  $('#roster').innerHTML=progress.owned.map(type=>{const u=UNIT_TYPES[type];return `<button class="roster-card ${progress.loadout.includes(type)?'equipped':''}" data-roster="${type}" type="button">${unitPortrait(type)}<strong>${u.label}</strong><small>${u.rarity} · ${u.cost}🐟</small></button>`;}).join('');
   document.querySelectorAll('.slot-card').forEach(button=>button.onclick=()=>{selectedLineupSlot=Number(button.dataset.slot);renderLineup();});
   document.querySelectorAll('.roster-card').forEach(button=>button.onclick=()=>equipUnit(button.dataset.roster));
 }
@@ -183,10 +191,10 @@ function update(dt) {
 function updateArmy(army,opponents,direction,dt) {
   const width=canvas.viewWidth||800;
   army.forEach(unit=>{
-    unit.attack-=dt; unit.hit=Math.max(0,(unit.hit||0)-dt); const target=findTarget(unit,opponents,direction);
+    unit.attack-=dt; unit.hit=Math.max(0,(unit.hit||0)-dt);unit.actionTime=Math.max(0,(unit.actionTime||0)-dt); const target=findTarget(unit,opponents,direction);
     const baseX=direction===1?width-70:70; const baseInRange=Math.abs(baseX-unit.x)<=unit.range;
     if(target||baseInRange){
-      if(unit.attack<=0){ unit.attack=unit.rate; unit.flash=.12; if(target){ if(unit.ranged) shoot(unit,target); else damage(target,unit.damage,unit.x,unit.y); } else { if(direction===1) game.enemyHp-=unit.damage; else game.playerHp-=unit.damage; burst(baseX,unit.y,direction===1?'#ef476f':'#55d6be'); game.shake=3; playHit(.08); } }
+      if(unit.attack<=0){ unit.attack=unit.rate; unit.flash=.12;unit.actionTime=.55; if(target){ if(unit.ranged) shoot(unit,target); else damage(target,unit.damage,unit.x,unit.y); } else { if(direction===1) game.enemyHp-=unit.damage; else game.playerHp-=unit.damage; burst(baseX,unit.y,direction===1?'#ef476f':'#55d6be'); game.shake=3; playHit(.08); } }
     } else unit.x+=unit.speed*direction*dt;
     unit.flash=Math.max(0,(unit.flash||0)-dt);
   });
@@ -259,11 +267,20 @@ function drawBackground(w,h){
 }
 function drawBase(x,y,cat,hp){ctx.save();ctx.translate(x,y);ctx.fillStyle=cat?'#e9e3cc':'#443b55';ctx.strokeStyle='#151827';ctx.lineWidth=4;ctx.fillRect(-38,-88,76,88);ctx.strokeRect(-38,-88,76,88);ctx.fillStyle=cat?'#ffd447':'#ef476f';ctx.beginPath();ctx.moveTo(-47,-88);ctx.lineTo(0,-125);ctx.lineTo(47,-88);ctx.fill();ctx.stroke();ctx.fillStyle='#17192a';ctx.fillRect(-12,-35,24,35);ctx.fillStyle='#fff';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.fillText(cat?'ฅ':'☠',0,-56);if(hp<=0){ctx.rotate(.12);ctx.globalAlpha=.5;}ctx.restore();}
 function drawUnit(u){
-  ctx.save();ctx.translate(u.x,u.y);if(u.hit)ctx.globalAlpha=.55;const big=['titan','emperor','paladin','chronos'].includes(u.unitType),size=big?26:21;
+  ctx.save();ctx.translate(u.x,u.y);if(u.hit)ctx.globalAlpha=.55;
+  const sprite=spriteImages[u.unitType];if(sprite?.complete&&sprite.naturalWidth){drawSpriteUnit(u,sprite);healthMini(u);ctx.restore();return;}
+  const big=['titan','emperor','paladin','chronos'].includes(u.unitType),size=big?26:21;
   ctx.fillStyle=u.color;ctx.strokeStyle='#17192a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-size-4,size,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(-size*.8,-size-17);ctx.lineTo(-size*.55,-size-34);ctx.lineTo(-3,-size-21);ctx.moveTo(size*.8,-size-17);ctx.lineTo(size*.55,-size-34);ctx.lineTo(3,-size-21);ctx.fill();ctx.stroke();
   ctx.fillStyle='#17192a';ctx.beginPath();ctx.arc(-7,-size-6,2.5,0,7);ctx.arc(7,-size-6,2.5,0,7);ctx.fill();ctx.beginPath();ctx.arc(0,-size+2,5,0,Math.PI);ctx.stroke();
   drawUnitGear(u.unitType,size);healthMini(u);ctx.restore();
+}
+function drawSpriteUnit(unit,image){
+  const frameWidth=image.naturalWidth/4,frameHeight=image.naturalHeight/2,isAttacking=(unit.actionTime||0)>0;
+  const elapsed = isAttacking ? (0.55 - unit.actionTime) : (game?.time || 0);
+  const frame = Math.min(3, Math.floor(elapsed / (isAttacking ? 0.1375 : 0.11)) % 4), row = isAttacking ? 1 : 0;
+  const size=['cosmic'].includes(unit.unitType)?150:136;
+  ctx.drawImage(image,frame*frameWidth,row*frameHeight,frameWidth,frameHeight,-size/2,-size+8,size,size);
 }
 function drawUnitGear(type,size){
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#22263a';ctx.fillStyle='#4b526d';ctx.lineWidth=4;
