@@ -48,19 +48,19 @@ const ENEMY_TYPES = {
 };
 const ENEMY_STAGE_POOLS = [
   ['pup'],['pup','bird'],['pup','bird','snake'],['bird','snake','boar'],['snake','boar','gorilla'],
-  ['snake','boar','gorilla'],['boar','gorilla','ghost'],['gorilla','rhino','ghost'],['rhino','ghost','mech'],['ghost','mech','demon']
+  ['snake','boar','gorilla'],['boar','gorilla','ghost'],['gorilla','rhino','ghost'],['rhino','ghost','mech'],['rhino','ghost','demon']
 ];
 const STAGES = [
-  { name:'햇살 초원', enemyHp:1100, spawn:4.1, scale:.58, reward:100 },
-  { name:'바람 언덕', enemyHp:1500, spawn:3.7, scale:.68, reward:140 },
-  { name:'붉은 협곡', enemyHp:1900, spawn:3.35, scale:.78, reward:190 },
-  { name:'달빛 늪지', enemyHp:2350, spawn:3.05, scale:.9, reward:250 },
-  { name:'강철 도시', enemyHp:2900, spawn:2.75, scale:1.02, reward:320 },
-  { name:'얼음 성벽', enemyHp:3000, spawn:3, scale:.95, reward:410 },
-  { name:'화염 분지', enemyHp:3600, spawn:2.75, scale:1.05, reward:510 },
-  { name:'폭풍 요새', enemyHp:4300, spawn:2.5, scale:1.15, reward:630 },
-  { name:'황혼 왕국', enemyHp:5100, spawn:2.3, scale:1.28, reward:780 },
-  { name:'별의 최후', enemyHp:6000, spawn:2.1, scale:1.42, reward:1000 }
+  { name:'햇살 초원', enemyHp:1000, spawn:4.4, scale:.5, reward:100 },
+  { name:'바람 언덕', enemyHp:1300, spawn:4.1, scale:.58, reward:140 },
+  { name:'붉은 협곡', enemyHp:1650, spawn:3.8, scale:.66, reward:190 },
+  { name:'달빛 늪지', enemyHp:2050, spawn:3.55, scale:.74, reward:250 },
+  { name:'강철 도시', enemyHp:2500, spawn:3.3, scale:.82, reward:320 },
+  { name:'얼음 성벽', enemyHp:2800, spawn:3.2, scale:.86, reward:410 },
+  { name:'화염 분지', enemyHp:3300, spawn:3.05, scale:.94, reward:510 },
+  { name:'폭풍 요새', enemyHp:3900, spawn:2.9, scale:1.02, reward:630 },
+  { name:'황혼 왕국', enemyHp:4600, spawn:2.75, scale:1.1, reward:780 },
+  { name:'별의 최후', enemyHp:5200, spawn:2.8, scale:1.12, reward:1000 }
 ];
 const STAGE_THEMES = [
   { sky1:'#72c9f4',sky2:'#dff6d5',ground:'#63a34f',hill:'#4f873f',accent:'#fff2a8',kind:'sun' },
@@ -98,8 +98,7 @@ let unitButtons = [];
 
 function createGame() {
   const settings = STAGES[selectedStage];
-  const lateStage=selectedStage>=5?selectedStage:0;
-  const money=250+lateStage*30,maxMoney=1200+lateStage*100,income=45+lateStage*3,playerHp=3200+lateStage*200;
+  const money=300+selectedStage*50,maxMoney=1300+selectedStage*110,income=55+selectedStage*4,playerHp=3600+selectedStage*250;
   return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), shake:0, result:null };
 }
 
@@ -204,7 +203,7 @@ function loop(now) {
 function update(dt) {
   game.time+=dt; game.money=Math.min(game.maxMoney,game.money+game.income*dt); game.enemyTimer-=dt;
   Object.keys(game.cooldowns).forEach(k=>game.cooldowns[k]=Math.max(0,game.cooldowns[k]-dt));
-  if(game.enemyTimer<=0){ spawnEnemy(); game.enemyTimer=game.enemySpawn*(.82+Math.random()*.4)*Math.max(.62,1-game.time/360); }
+  if(game.enemyTimer<=0){ spawnEnemy(); game.enemyTimer=game.enemySpawn*(.88+Math.random()*.34)*Math.max(.78,1-game.time/600); }
   updateArmy(game.units,game.enemies,1,dt); updateArmy(game.enemies,game.units,-1,dt);
   updateProjectiles(dt);
   game.projectiles=game.projectiles.filter(p=>p.life>0);
@@ -265,14 +264,15 @@ function removeDead(){
 function summon(type){ if(!game?.running)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,training=game.training[type]||0,boost=(1+(level-1)*.08)*(1+training*.15);if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown;game.units.push({...u,unitType:type,id:crypto.randomUUID(),side:'cat',x:82+Math.random()*8,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost),heal:Math.round((u.heal||0)*boost)});playTone(440,.1,'triangle',.08); }
 function spawnEnemy(){
   const pool=ENEMY_STAGE_POOLS[selectedStage];game.spawnCount++;
-  let type=pool[Math.floor(Math.random()*pool.length)];
+  const normalPool=selectedStage>=4&&pool.length>1?pool.slice(0,-1):pool;
+  let type=normalPool[Math.floor(Math.random()*normalPool.length)];
   if(selectedStage>=4&&game.spawnCount%10===0)type=pool[pool.length-1];
-  const e=ENEMY_TYPES[type],waveBoost=1+Math.min(.35,game.time/300);
+  const e=ENEMY_TYPES[type],waveBoost=1+Math.min(.2,game.time/360);
   game.enemies.push({...e,id:crypto.randomUUID(),side:'enemy',kind:type,x:(canvas.viewWidth||800)-82,y:groundY(),attack:.4,hp:Math.round(e.hp*game.enemyScale*waveBoost),maxHp:Math.round(e.hp*game.enemyScale*waveBoost),damage:Math.round(e.damage*game.enemyScale*waveBoost)});
 }
-function upgradeWorker(){ if(!game?.running||game.workerLevel>=8)return;const cost=workerCost();if(game.money<cost)return;game.money-=cost;game.workerLevel++;game.income+=15;game.maxMoney+=250;playJingle([523,659]); }
-function workerCost(){return 150+(game?.workerLevel||1)*100;}
-function trainingCost(type){const level=game?.training[type]||0;return Math.round((80+UNIT_TYPES[type].cost*.5)*Math.pow(1.55,level)/10)*10;}
+function upgradeWorker(){ if(!game?.running||game.workerLevel>=8)return;const cost=workerCost();if(game.money<cost)return;game.money-=cost;game.workerLevel++;game.income+=18;game.maxMoney+=300;playJingle([523,659]); }
+function workerCost(){return 120+(game?.workerLevel||1)*70;}
+function trainingCost(type){const level=game?.training[type]||0;return Math.round((60+UNIT_TYPES[type].cost*.35)*Math.pow(1.45,level)/10)*10;}
 function renderTraining(){
   if(!game)return;$('#upgrade-deck').innerHTML=progress.loadout.map(type=>`<button class="upgrade-button" data-upgrade="${type}" type="button"><strong>${UNIT_TYPES[type].label} +${game.training[type]}</strong><span>${game.training[type]>=5?'MAX':`${trainingCost(type)} 🐟`}</span></button>`).join('');
   document.querySelectorAll('.upgrade-button').forEach(button=>button.onclick=()=>upgradeUnit(button.dataset.upgrade));
