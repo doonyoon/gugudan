@@ -3,7 +3,9 @@ const ctx = canvas.getContext('2d');
 const $ = (selector) => document.querySelector(selector);
 const CHARACTER_SPRITES = {
   runner:'runner.png', farmer:'farmer.png', tank:'tank.png', boxer:'boxer.png', samurai:'samurai.png',
-  chef:'chef.png', mage:'mage.png', medic:'medic.png', sleepy:'sleepy.png', pirate:'pirate.png'
+  chef:'chef.png', mage:'mage.png', medic:'medic.png', sleepy:'sleepy.png', pirate:'pirate.png',
+  ninja:'ninja.png', dragon:'dragon.png', gunner:'gunner.png', titan:'titan.png', rocket:'rocket.png',
+  phantom:'phantom.png', paladin:'paladin.png', phoenix:'phoenix.png', cosmic:'cosmic.png'
 };
 const spriteImages = Object.fromEntries(Object.entries(CHARACTER_SPRITES).map(([type,file]) => {
   const image = new Image(); image.src = `assets/characters/${file}`; return [type,image];
