@@ -302,7 +302,8 @@ function drawSpriteUnit(unit,image){
   const frameWidth=image.naturalWidth/4,frameHeight=image.naturalHeight/2,isAttacking=(unit.actionTime||0)>0;
   const elapsed = isAttacking ? (0.55 - unit.actionTime) : (game?.time || 0);
   const frame = Math.min(3, Math.floor(elapsed / (isAttacking ? 0.1375 : 0.11)) % 4), row = isAttacking ? 1 : 0;
-  const width=['mage'].includes(unit.unitType)?112:100,height=width*(frameHeight/frameWidth);
+  const spriteWidths={titan:125,phoenix:112,paladin:118,dragon:110,cosmic:112};
+  const width=spriteWidths[unit.unitType]||(['mage'].includes(unit.unitType)?112:100),height=width*(frameHeight/frameWidth);
   ctx.drawImage(image,frame*frameWidth,row*frameHeight,frameWidth,frameHeight,-width/2,-height*.8,width,height);
 }
 function drawUnitGear(type,size){
