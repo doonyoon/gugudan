@@ -3,7 +3,7 @@ const ctx = canvas.getContext('2d');
 const $ = (selector) => document.querySelector(selector);
 const CHARACTER_SPRITES = {
   runner:'runner.png', farmer:'farmer.png', tank:'tank.png', boxer:'boxer.png', samurai:'samurai.png',
-  chef:'chef.png', cosmic:'cosmic.png', medic:'medic.png', sleepy:'sleepy.png', pirate:'pirate.png'
+  chef:'chef.png', mage:'mage.png', medic:'medic.png', sleepy:'sleepy.png', pirate:'pirate.png'
 };
 const spriteImages = Object.fromEntries(Object.entries(CHARACTER_SPRITES).map(([type,file]) => {
   const image = new Image(); image.src = `assets/characters/${file}`; return [type,image];
@@ -279,7 +279,7 @@ function drawSpriteUnit(unit,image){
   const frameWidth=image.naturalWidth/4,frameHeight=image.naturalHeight/2,isAttacking=(unit.actionTime||0)>0;
   const elapsed = isAttacking ? (0.55 - unit.actionTime) : (game?.time || 0);
   const frame = Math.min(3, Math.floor(elapsed / (isAttacking ? 0.1375 : 0.11)) % 4), row = isAttacking ? 1 : 0;
-  const width=['cosmic'].includes(unit.unitType)?112:100,height=width*(frameHeight/frameWidth);
+  const width=['mage'].includes(unit.unitType)?112:100,height=width*(frameHeight/frameWidth);
   ctx.drawImage(image,frame*frameWidth,row*frameHeight,frameWidth,frameHeight,-width/2,-height*.8,width,height);
 }
 function drawUnitGear(type,size){
