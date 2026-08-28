@@ -84,6 +84,10 @@ const GACHA_RATES = [
 ];
 const GACHA_UNITS = Object.values(GACHA_POOLS).flat();
 const SAVE_KEY = 'cat-fortress-save-v2';
+const AUTH_ACCOUNTS_KEY = 'cat-fortress-accounts-v1';
+const AUTH_SESSION_KEY = 'cat-fortress-session-v1';
+let activeUser = localStorage.getItem(AUTH_SESSION_KEY) || '';
+if(activeUser && !loadAccounts()[activeUser]){activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);}
 
 let progress = loadProgress();
 let selectedStage = Math.min(progress.highestStage, 9);
@@ -118,12 +122,26 @@ $('#exit-battle').addEventListener('click', exitBattle);
 $('#coupon-form').addEventListener('submit', redeemCoupon);
 $('#lineup-button').addEventListener('click', openLineup);
 $('#close-lineup').addEventListener('click', () => $('#lineup-dialog').close());
+$('#auth-form').addEventListener('submit', loginAccount);
+$('#signup-button').addEventListener('click', signupAccount);
+$('#logout-button').addEventListener('click', logoutAccount);
+
+function loadAccounts(){try{return JSON.parse(localStorage.getItem(AUTH_ACCOUNTS_KEY))||{};}catch{return {};}}
+function progressKey(){return activeUser?`${SAVE_KEY}:${activeUser}`:SAVE_KEY;}
+async function hashPassword(password){const data=new TextEncoder().encode(password);const hash=await crypto.subtle.digest('SHA-256',data);return [...new Uint8Array(hash)].map(value=>value.toString(16).padStart(2,'0')).join('');}
+function authValues(){return {id:$('#auth-id').value.trim(),password:$('#auth-password').value,message:$('#auth-message')};}
+function validAccount(id,password,message){message.className='';if(!/^[A-Za-z0-9가-힣_]{3,16}$/.test(id)){message.textContent='아이디는 3~16자의 한글, 영문, 숫자, 밑줄만 사용할 수 있어요.';return false;}if(password.length<4){message.textContent='비밀번호는 4자 이상 입력하세요.';return false;}return true;}
+async function signupAccount(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const accounts=loadAccounts();if(accounts[id]){message.textContent='이미 사용 중인 아이디예요.';return;}accounts[id]={password:await hashPassword(password),createdAt:Date.now()};localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));const oldSave=localStorage.getItem(SAVE_KEY);if(oldSave&&!localStorage.getItem(`${SAVE_KEY}:${id}`))localStorage.setItem(`${SAVE_KEY}:${id}`,oldSave);message.textContent='회원가입 완료! 자동으로 로그인했어요.';message.className='success';activateAccount(id);}
+async function loginAccount(event){event.preventDefault();const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const account=loadAccounts()[id];if(!account||account.password!==await hashPassword(password)){message.textContent='아이디 또는 비밀번호가 맞지 않아요.';return;}activateAccount(id);}
+function activateAccount(id){activeUser=id;localStorage.setItem(AUTH_SESSION_KEY,id);progress=loadProgress();selectedStage=Math.min(progress.highestStage,9);game=null;setAuthView();renderMeta();resizeCanvas();draw();}
+function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;game=null;cancelAnimationFrame(animationId);activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());setAuthView();}
+function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
 
 function loadProgress(){
   const fallback={gold:0,highestStage:0,cleared:[],owned:[...BASIC_UNITS],loadout:[...BASIC_UNITS],levels:{runner:1,tank:1,fighter:1,mage:1},redeemedCodes:[]};
-  try{const saved=JSON.parse(localStorage.getItem(SAVE_KEY));if(!saved)return fallback;const owned=[...new Set([...BASIC_UNITS,...(saved.owned||[])])],loadout=(saved.loadout||BASIC_UNITS).filter(type=>owned.includes(type)).slice(0,4);while(loadout.length<4){const next=BASIC_UNITS.find(type=>!loadout.includes(type));loadout.push(next);}return {...fallback,...saved,owned,loadout,levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
+  try{const saved=JSON.parse(localStorage.getItem(progressKey()));if(!saved)return fallback;const owned=[...new Set([...BASIC_UNITS,...(saved.owned||[])])],loadout=(saved.loadout||BASIC_UNITS).filter(type=>owned.includes(type)).slice(0,4);while(loadout.length<4){const next=BASIC_UNITS.find(type=>!loadout.includes(type));loadout.push(next);}return {...fallback,...saved,owned,loadout,levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
 }
-function saveProgress(){localStorage.setItem(SAVE_KEY,JSON.stringify(progress));renderMeta();}
+function saveProgress(){localStorage.setItem(progressKey(),JSON.stringify(progress));renderMeta();}
 function renderMeta(){
   $('#gold').textContent=progress.gold.toLocaleString();
   $('#stage-picker').innerHTML=STAGES.map((s,i)=>`<button class="stage-button ${i===selectedStage?'selected':''}" data-stage="${i}" ${i>progress.highestStage?'disabled':''}>${i+1}${progress.cleared.includes(i)?' ✓':''}</button>`).join('');
@@ -359,4 +377,4 @@ function playTone(freq,duration=.1,type='square',volume=.06,delay=0){if(!soundOn
 function playHit(volume){playTone(90,.07,'sawtooth',volume);}
 function playJingle(notes,gap=.11){notes.forEach((n,i)=>playTone(n,.18,'triangle',.09,i*gap));}
 
-renderMeta();resizeCanvas();draw();
+setAuthView();renderMeta();resizeCanvas();draw();
