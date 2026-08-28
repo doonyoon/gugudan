@@ -25,7 +25,7 @@ const UNIT_TYPES = {
   ,farmer: { cost: 75, hp: 105, damage: 18, speed: 38, range: 38, cooldown: 1.8, rate: .62, color: '#d8e6af', label: '농부냥', icon: '♧', desc: '성실한 근접 공격', rarity: '노멀' }
   ,sleepy: { cost: 110, hp: 180, damage: 26, speed: 18, range: 42, cooldown: 2.8, rate: 1, color: '#ddd7ee', label: '잠꾸러기냥', icon: 'Z', desc: '느리지만 튼튼함', rarity: '노멀' }
   ,pirate: { cost: 260, hp: 225, damage: 63, speed: 34, range: 75, cooldown: 5, rate: 1, color: '#d7c0a8', label: '해적냥', icon: '☠', desc: '중거리 대포 공격', rarity: 'EX', ranged: true }
-  ,medic: { cost: 290, hp: 310, damage: 48, speed: 28, range: 55, cooldown: 5.5, rate: .85, color: '#f7dce4', label: '의무냥', icon: '+', desc: '튼튼한 지원 전투', rarity: 'EX' }
+  ,medic: { cost: 290, hp: 280, damage: 0, heal: 95, speed: 32, range: 175, cooldown: 5.5, rate: 1.25, color: '#f7dce4', label: '의무냥', icon: '+', desc: '고등급 아군 우선 치료', rarity: 'EX', healer: true }
   ,samurai: { cost: 390, hp: 340, damage: 105, speed: 42, range: 52, cooldown: 7, rate: 1.1, color: '#b9c7dd', label: '사무라이냥', icon: '刀', desc: '날카로운 일격', rarity: '레어' }
   ,rocket: { cost: 460, hp: 180, damage: 95, speed: 30, range: 165, cooldown: 7.5, rate: 1.35, color: '#ffc99d', label: '로켓냥', icon: '▲', desc: '강력한 원거리 포격', rarity: '레어', ranged: true }
   ,phantom: { cost: 680, hp: 370, damage: 185, speed: 58, range: 70, cooldown: 10, rate: .95, color: '#c6b3e8', label: '유령냥', icon: '◈', desc: '빠르고 강한 기습', rarity: '슈퍼 레어' }
@@ -73,6 +73,7 @@ const STAGE_THEMES = [
   { sky1:'#07081d',sky2:'#25245c',ground:'#28284a',hill:'#17172f',accent:'#a9dcff',kind:'space' }
 ];
 const BASIC_UNITS = ['runner','tank','fighter','mage'];
+const RARITY_RANK = {'기본':0,'노멀':1,'EX':2,'레어':3,'슈퍼 레어':4,'울트라 슈퍼 레어':5,'레전드 레어':6};
 const GACHA_POOLS = {
   '노멀':['boxer','farmer','sleepy'], 'EX':['chef','pirate','medic'], '레어':['ninja','gunner','samurai','rocket'], '슈퍼 레어':['dragon','titan','phantom','paladin'], '울트라 슈퍼 레어':['cosmic','phoenix'], '레전드 레어':['emperor','chronos']
 };
@@ -192,6 +193,7 @@ function updateArmy(army,opponents,direction,dt) {
   const width=canvas.viewWidth||800;
   army.forEach(unit=>{
     unit.attack-=dt; unit.hit=Math.max(0,(unit.hit||0)-dt);unit.actionTime=Math.max(0,(unit.actionTime||0)-dt); const target=findTarget(unit,opponents,direction);
+    if(unit.healer){updateHealer(unit,army,direction,dt);return;}
     const baseX=direction===1?width-70:70; const baseInRange=Math.abs(baseX-unit.x)<=unit.range;
     if(target||baseInRange){
       if(unit.attack<=0){ unit.attack=unit.rate; unit.flash=.12;unit.actionTime=.55; if(target){ if(unit.ranged) shoot(unit,target); else damage(target,unit.damage,unit.x,unit.y); } else { if(direction===1) game.enemyHp-=unit.damage; else game.playerHp-=unit.damage; burst(baseX,unit.y,direction===1?'#ef476f':'#55d6be'); game.shake=3; playHit(.08); } }
@@ -199,6 +201,23 @@ function updateArmy(army,opponents,direction,dt) {
     unit.flash=Math.max(0,(unit.flash||0)-dt);
   });
 }
+function updateHealer(unit,army,direction,dt){
+  const wounded=army.filter(ally=>ally!==unit&&ally.hp>0&&ally.hp<ally.maxHp).sort((a,b)=>{
+    const rarity=(RARITY_RANK[b.rarity]||0)-(RARITY_RANK[a.rarity]||0);if(rarity)return rarity;
+    const healthRatio=a.hp/a.maxHp-b.hp/b.maxHp;if(healthRatio)return healthRatio;
+    return Math.abs(a.x-unit.x)-Math.abs(b.x-unit.x);
+  });
+  const target=wounded[0];
+  if(target){
+    const distance=Math.abs(target.x-unit.x);
+    if(distance<=unit.range){if(unit.attack<=0){unit.attack=unit.rate;unit.actionTime=.65;const amount=Math.min(unit.heal,target.maxHp-target.hp);target.hp+=amount;healingBurst(target.x,target.y,amount);}}
+    else unit.x+=Math.sign(target.x-unit.x)*unit.speed*dt;
+    return;
+  }
+  const allies=army.filter(ally=>ally!==unit),front=allies.sort((a,b)=>direction===1?b.x-a.x:a.x-b.x)[0];
+  const followX=front?front.x-direction*75:unit.x+direction*20;if(Math.abs(followX-unit.x)>10)unit.x+=Math.sign(followX-unit.x)*unit.speed*.55*dt;
+}
+function healingBurst(x,y,amount){for(let i=0;i<8;i++)game.particles.push({x:x+(Math.random()-.5)*28,y:y-30-Math.random()*25,vx:(Math.random()-.5)*20,vy:-18-Math.random()*25,life:.55+Math.random()*.25,color:'#65f0b5'});playTone(660,.12,'sine',.045);setTimeout(()=>playTone(880,.16,'sine',.04),70);}
 function findTarget(unit,opponents,direction){ return opponents.filter(e=>direction===1?e.x>=unit.x:e.x<=unit.x).sort((a,b)=>Math.abs(a.x-unit.x)-Math.abs(b.x-unit.x)).find(e=>Math.abs(e.x-unit.x)<=unit.range); }
 function shoot(unit,target){ game.projectiles.push({x:unit.x,y:unit.y-35,speed:230,direction:target.x>=unit.x?1:-1,targetId:target.id,targetSide:target.side,damage:unit.damage,life:4,color:unit.side==='cat'?'#f7dcff':'#ff7b8d'}); playTone(unit.side==='cat'?700:180,.08,'sine',.04); }
 function updateProjectiles(dt){
@@ -221,7 +240,7 @@ function removeDead(){
   game.enemies=game.enemies.filter(e=>{if(e.hp>0)return true;game.money=Math.min(game.maxMoney,game.money+e.reward);burst(e.x,e.y,'#ffd447',10);return false;});
   game.units=game.units.filter(e=>{if(e.hp>0)return true;burst(e.x,e.y,'#dff6ff',8);return false;});
 }
-function summon(type){ if(!game?.running)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,training=game.training[type]||0,boost=(1+(level-1)*.08)*(1+training*.15);if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown;game.units.push({...u,unitType:type,id:crypto.randomUUID(),side:'cat',x:82+Math.random()*8,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost)});playTone(440,.1,'triangle',.08); }
+function summon(type){ if(!game?.running)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,training=game.training[type]||0,boost=(1+(level-1)*.08)*(1+training*.15);if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown;game.units.push({...u,unitType:type,id:crypto.randomUUID(),side:'cat',x:82+Math.random()*8,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost),heal:Math.round((u.heal||0)*boost)});playTone(440,.1,'triangle',.08); }
 function spawnEnemy(){
   const pool=ENEMY_STAGE_POOLS[selectedStage];game.spawnCount++;
   let type=pool[Math.floor(Math.random()*pool.length)];
@@ -238,7 +257,7 @@ function renderTraining(){
 }
 function upgradeUnit(type){
   if(!game?.running||game.training[type]>=5)return;const cost=trainingCost(type);if(game.money<cost)return;game.money-=cost;game.training[type]++;
-  game.units.filter(unit=>unit.unitType===type).forEach(unit=>{const oldMax=unit.maxHp;unit.maxHp=Math.round(unit.maxHp*1.15);unit.hp=Math.round(unit.hp+unit.maxHp-oldMax);unit.damage=Math.round(unit.damage*1.15);});
+  game.units.filter(unit=>unit.unitType===type).forEach(unit=>{const oldMax=unit.maxHp;unit.maxHp=Math.round(unit.maxHp*1.15);unit.hp=Math.round(unit.hp+unit.maxHp-oldMax);unit.damage=Math.round(unit.damage*1.15);if(unit.heal)unit.heal=Math.round(unit.heal*1.15);});
   renderTraining();playJingle([440,554,659],.07);
 }
 function finish(win){
