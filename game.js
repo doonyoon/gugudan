@@ -86,7 +86,7 @@ const GACHA_UNITS = Object.values(GACHA_POOLS).flat();
 const SAVE_KEY = 'cat-fortress-save-v2';
 const AUTH_ACCOUNTS_KEY = 'cat-fortress-accounts-v1';
 const AUTH_SESSION_KEY = 'cat-fortress-session-v1';
-const AUTH_REPAIR_KEY = 'cat-fortress-account-repair-v1';
+const AUTH_REPAIR_KEY = 'cat-fortress-account-repair-v2';
 repairDuplicatedAccountSaves();
 let activeUser = localStorage.getItem(AUTH_SESSION_KEY) || '';
 if(activeUser && !loadAccounts()[activeUser]){activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);}
@@ -130,9 +130,9 @@ $('#logout-button').addEventListener('click', logoutAccount);
 function loadAccounts(){try{return JSON.parse(localStorage.getItem(AUTH_ACCOUNTS_KEY))||{};}catch{return {};}}
 function repairDuplicatedAccountSaves(){
   if(localStorage.getItem(AUTH_REPAIR_KEY))return;
-  const legacySave=localStorage.getItem(SAVE_KEY),accounts=loadAccounts();
+  const accounts=loadAccounts();
   const users=Object.entries(accounts).sort((a,b)=>(a[1].createdAt||0)-(b[1].createdAt||0));
-  if(legacySave&&users.length>1)users.slice(1).forEach(([id])=>{const key=`${SAVE_KEY}:${id}`;if(localStorage.getItem(key)===legacySave)localStorage.removeItem(key);});
+  users.slice(1).forEach(([id])=>localStorage.removeItem(`${SAVE_KEY}:${id}`));
   localStorage.setItem(AUTH_REPAIR_KEY,'done');
 }
 function progressKey(){return activeUser?`${SAVE_KEY}:${activeUser}`:SAVE_KEY;}
