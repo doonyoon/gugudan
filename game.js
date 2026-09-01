@@ -48,7 +48,9 @@ const ENEMY_TYPES = {
 };
 const ENEMY_STAGE_POOLS = [
   ['pup'],['pup','bird'],['pup','bird','snake'],['bird','snake','boar'],['snake','boar','gorilla'],
-  ['snake','boar','gorilla'],['boar','gorilla','ghost'],['gorilla','rhino','ghost'],['rhino','ghost','mech'],['rhino','ghost','demon']
+  ['snake','boar','gorilla'],['boar','gorilla','ghost'],['gorilla','rhino','ghost'],['rhino','ghost','mech'],['rhino','ghost','demon'],
+  ['gorilla','rhino','mech'],['boar','ghost','mech'],['gorilla','ghost','demon'],['rhino','ghost','mech'],['gorilla','mech','demon'],
+  ['rhino','mech','demon'],['rhino','ghost','demon'],['rhino','ghost','demon'],['gorilla','rhino','demon'],['gorilla','rhino','demon']
 ];
 const STAGES = [
   { name:'햇살 초원', enemyHp:1000, spawn:4.4, scale:.5, reward:100 },
@@ -60,7 +62,17 @@ const STAGES = [
   { name:'화염 분지', enemyHp:3300, spawn:3.05, scale:.94, reward:510 },
   { name:'폭풍 요새', enemyHp:3900, spawn:2.9, scale:1.02, reward:630 },
   { name:'황혼 왕국', enemyHp:4600, spawn:2.75, scale:1.1, reward:780 },
-  { name:'별의 최후', enemyHp:5200, spawn:2.8, scale:1.12, reward:1000 }
+  { name:'별의 최후', enemyHp:5200, spawn:2.8, scale:1.12, reward:1000 },
+  { name:'수정 동굴', enemyHp:5800, spawn:2.75, scale:1.18, reward:1200 },
+  { name:'독안개 숲', enemyHp:6500, spawn:2.7, scale:1.24, reward:1420 },
+  { name:'황금 사막', enemyHp:7200, spawn:2.65, scale:1.3, reward:1660 },
+  { name:'심해 왕국', enemyHp:8000, spawn:2.6, scale:1.36, reward:1920 },
+  { name:'천공 신전', enemyHp:8900, spawn:2.55, scale:1.42, reward:2200 },
+  { name:'망각의 폐허', enemyHp:9800, spawn:2.5, scale:1.48, reward:2500 },
+  { name:'오로라 설원', enemyHp:10800, spawn:2.65, scale:1.42, reward:2820 },
+  { name:'태양의 용광로', enemyHp:11900, spawn:2.6, scale:1.48, reward:3160 },
+  { name:'차원의 균열', enemyHp:13100, spawn:2.55, scale:1.54, reward:3520 },
+  { name:'신들의 성채', enemyHp:14000, spawn:2.5, scale:1.6, reward:4000 }
 ];
 const STAGE_THEMES = [
   { sky1:'#72c9f4',sky2:'#dff6d5',ground:'#63a34f',hill:'#4f873f',accent:'#fff2a8',kind:'sun' },
@@ -72,7 +84,17 @@ const STAGE_THEMES = [
   { sky1:'#6e1720',sky2:'#ee512f',ground:'#3d2827',hill:'#211b22',accent:'#ffb326',kind:'lava' },
   { sky1:'#252947',sky2:'#65718b',ground:'#46545b',hill:'#29363e',accent:'#d8e7ff',kind:'storm' },
   { sky1:'#4a1f58',sky2:'#d45c67',ground:'#42314d',hill:'#2e243e',accent:'#ffb66e',kind:'twilight' },
-  { sky1:'#07081d',sky2:'#25245c',ground:'#28284a',hill:'#17172f',accent:'#a9dcff',kind:'space' }
+  { sky1:'#07081d',sky2:'#25245c',ground:'#28284a',hill:'#17172f',accent:'#a9dcff',kind:'space' },
+  { sky1:'#25365f',sky2:'#80dff0',ground:'#536e91',hill:'#314668',accent:'#9ffff2',kind:'ice' },
+  { sky1:'#193b34',sky2:'#80a968',ground:'#40533a',hill:'#293c30',accent:'#c8ff78',kind:'wind' },
+  { sky1:'#e88a37',sky2:'#ffe09a',ground:'#b87535',hill:'#87502b',accent:'#fff1a8',kind:'sun' },
+  { sky1:'#071e46',sky2:'#197ca2',ground:'#18526e',hill:'#0c3855',accent:'#74eaff',kind:'moon' },
+  { sky1:'#79c8ff',sky2:'#f5f3d4',ground:'#bdad7a',hill:'#84775b',accent:'#ffffff',kind:'city' },
+  { sky1:'#3b2d38',sky2:'#8b695e',ground:'#51463f',hill:'#302d2c',accent:'#d7c6aa',kind:'canyon' },
+  { sky1:'#342b67',sky2:'#a9e6ff',ground:'#c6eff4',hill:'#7cc4db',accent:'#edffff',kind:'ice' },
+  { sky1:'#8b201c',sky2:'#ff9a3c',ground:'#572b23',hill:'#2e1b20',accent:'#fff075',kind:'lava' },
+  { sky1:'#130d35',sky2:'#7c3bb3',ground:'#322755',hill:'#20173e',accent:'#e4a8ff',kind:'storm' },
+  { sky1:'#03040f',sky2:'#18255d',ground:'#242342',hill:'#111126',accent:'#ffe875',kind:'space' }
 ];
 const BASIC_UNITS = ['runner','tank','fighter','mage'];
 const RARITY_RANK = {'기본':0,'노멀':1,'EX':2,'레어':3,'슈퍼 레어':4,'울트라 슈퍼 레어':5,'레전드 레어':6};
@@ -92,7 +114,7 @@ let activeUser = localStorage.getItem(AUTH_SESSION_KEY) || '';
 if(activeUser && !loadAccounts()[activeUser]){activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);}
 
 let progress = loadProgress();
-let selectedStage = Math.min(progress.highestStage, 9);
+let selectedStage = Math.min(progress.highestStage, STAGES.length-1);
 let selectedLineupSlot = 0;
 
 let game = null, animationId = null, lastTime = 0, audio = null, soundOn = true;
@@ -146,7 +168,7 @@ function validAccount(id,password,message){message.className='';if(!/^[A-Za-z0-9
 async function signupAccount(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const accounts=loadAccounts();if(accounts[id]){message.textContent='이미 사용 중인 아이디예요.';return;}const isFirstAccount=Object.keys(accounts).length===0;accounts[id]={password:await hashPassword(password),createdAt:Date.now()};localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));const oldSave=localStorage.getItem(SAVE_KEY);if(isFirstAccount&&oldSave&&!localStorage.getItem(`${SAVE_KEY}:${id}`))localStorage.setItem(`${SAVE_KEY}:${id}`,oldSave);message.textContent='회원가입 완료! 자동으로 로그인했어요.';message.className='success';activateAccount(id);}
 async function loginAccount(event){event.preventDefault();const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const account=loadAccounts()[id];if(!account||account.password!==await hashPassword(password)){message.textContent='아이디 또는 비밀번호가 맞지 않아요.';return;}activateAccount(id);}
 async function resetPassword(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const accounts=loadAccounts();if(!accounts[id]){message.textContent='저장된 계정을 찾을 수 없어요.';return;}if(!window.confirm(`${id} 계정의 비밀번호를 새로 입력한 비밀번호로 바꿀까요?`))return;accounts[id].password=await hashPassword(password);accounts[id].passwordChangedAt=Date.now();localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));message.textContent='비밀번호를 변경했어요. 자동으로 로그인합니다.';message.className='success';activateAccount(id);}
-function activateAccount(id){activeUser=id;localStorage.setItem(AUTH_SESSION_KEY,id);progress=loadProgress();selectedStage=Math.min(progress.highestStage,9);game=null;setAuthView();renderMeta();requestAnimationFrame(()=>{resizeCanvas();draw();});}
+function activateAccount(id){activeUser=id;localStorage.setItem(AUTH_SESSION_KEY,id);progress=loadProgress();selectedStage=Math.min(progress.highestStage,STAGES.length-1);game=null;setAuthView();renderMeta();requestAnimationFrame(()=>{resizeCanvas();draw();});}
 function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;game=null;cancelAnimationFrame(animationId);activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());setAuthView();}
 function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
 
@@ -298,7 +320,7 @@ function upgradeUnit(type){
 }
 function finish(win){
   game.running=false;game.result=win;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');let reward=0;
-  if(win){reward=STAGES[selectedStage].reward;progress.gold+=reward;if(!progress.cleared.includes(selectedStage))progress.cleared.push(selectedStage);progress.highestStage=Math.max(progress.highestStage,Math.min(9,selectedStage+1));saveProgress();}
+  if(win){reward=STAGES[selectedStage].reward;progress.gold+=reward;if(!progress.cleared.includes(selectedStage))progress.cleared.push(selectedStage);progress.highestStage=Math.max(progress.highestStage,Math.min(STAGES.length-1,selectedStage+1));saveProgress();}
   const box=$('#battle-message');box.innerHTML=`<span>${win?'승리!':'패배...'}</span>${win?`<small>+${reward} 골드 🪙</small>`:''}<button class="main-button" id="retry-button">스테이지 선택</button>`;box.classList.remove('hidden');
   $('#retry-button').onclick=()=>{$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');renderMeta();};playJingle(win?[523,659,784,1047]:[330,247,196],.18);
 }
