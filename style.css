@@ -121,6 +121,11 @@ dialog li { margin:10px 0; line-height:1.6; }
 .confetti { position:absolute; inset:0; z-index:4; pointer-events:none; }
 .confetti i { position:absolute; left:50%; top:50%; width:7px; height:14px; border-radius:2px; background:var(--color); animation:confetti-burst .9s ease-out forwards; transform:rotate(var(--rotate)); }
 .gacha-result { min-height:48px; margin:10px 0; font-weight:700; color:var(--yellow); }
+.gacha-result.ten-results { display:grid; grid-template-columns:repeat(2,1fr); gap:5px; color:#fff; text-align:left; }
+.gacha-result.ten-results span { padding:6px 8px; border-radius:7px; background:#111426; font-size:.72rem; }
+.gacha-result.ten-results b { color:var(--yellow); }.gacha-result.ten-results em { float:right; color:#72e2c4; font-size:.65rem; font-style:normal; }
+.gacha-buttons { display:grid; grid-template-columns:1fr 1fr; gap:8px; }.gacha-buttons .main-button { min-width:0; padding:12px 8px; font-size:1rem; }
+.ten-draw-button { background:linear-gradient(135deg,#ffd447,#ff8c42); }
 .rate-table { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:14px; }
 .rate-table span { padding:5px 3px; border-radius:7px; background:#111426; color:#bbc1db; font-size:.66rem; }
 .rate-table b { color:var(--yellow); }
