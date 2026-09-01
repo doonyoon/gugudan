@@ -51,8 +51,10 @@ const ENEMY_TYPES = {
   bat: { hp: 680, damage: 88, speed: 54, range: 105, rate: 1.05, reward: 155, color: '#514272', ranged: true },
   golem: { hp: 2400, damage: 185, speed: 12, range: 62, rate: 1.6, reward: 390, color: '#8d765f' },
   sorcerer: { hp: 1250, damage: 145, speed: 24, range: 175, rate: 1.4, reward: 280, color: '#4853a0', ranged: true },
-  overlord: { hp: 5200, damage: 210, speed: 11, range: 135, rate: 1.5, reward: 1800, color: '#381448', ranged: true, boss: true }
+  overlord: { hp: 5200, damage: 210, speed: 11, range: 135, rate: 1.5, reward: 1800, color: '#381448', ranged: true, boss: true, label:'마왕' },
+  godOverlord: { hp: 8500, damage: 280, speed: 9, range: 165, rate: 1.4, reward: 3000, color: '#151b5c', ranged: true, boss: true, label:'신왕 제로스' }
 };
+const BOSS_STAGES = {9:'overlord',19:'godOverlord'};
 const ENEMY_STAGE_POOLS = [
   ['pup'],['pup','bird'],['pup','bird','snake'],['bird','snake','boar'],['snake','boar','gorilla'],
   ['snake','boar','gorilla'],['boar','gorilla','ghost'],['gorilla','rhino','ghost'],['rhino','ghost','mech'],['rhino','ghost','demon'],
@@ -132,7 +134,8 @@ let unitButtons = [];
 function createGame() {
   const settings = STAGES[selectedStage];
   const money=300+selectedStage*50,maxMoney=1300+selectedStage*110,income=55+selectedStage*4,playerHp=3600+selectedStage*250;
-  return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, finalBossSpawned:false, finalBossDefeated:selectedStage!==STAGES.length-1, bossWarning:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), shake:0, result:null };
+  const bossType=BOSS_STAGES[selectedStage]||null;
+  return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, bossType, bossName:bossType?ENEMY_TYPES[bossType].label:'', bossSpawned:false, bossDefeated:!bossType, bossWarning:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), shake:0, result:null };
 }
 
 function resizeCanvas() {
@@ -311,9 +314,9 @@ function updateProjectiles(dt){
   });
 }
 function damage(target,amount,x,y){ target.hp-=amount; target.hit=.12; burst(x,y,target.side==='cat'?'#fff0bd':'#ff9d76'); playHit(.035); }
-function canDamageEnemyBase(){return selectedStage!==STAGES.length-1||game.finalBossDefeated;}
+function canDamageEnemyBase(){return !game.bossType||game.bossDefeated;}
 function removeDead(){
-  game.enemies=game.enemies.filter(e=>{if(e.hp>0)return true;if(e.boss){game.finalBossDefeated=true;game.bossWarning=2.5;playJingle([784,659,523,392],.12);}game.money=Math.min(game.maxMoney,game.money+e.reward);burst(e.x,e.y,e.boss?'#ff5ee5':'#ffd447',e.boss?35:10);return false;});
+  game.enemies=game.enemies.filter(e=>{if(e.hp>0)return true;if(e.boss){game.bossDefeated=true;game.bossWarning=2.5;playJingle([784,659,523,392],.12);}game.money=Math.min(game.maxMoney,game.money+e.reward);burst(e.x,e.y,e.boss?'#ff5ee5':'#ffd447',e.boss?35:10);return false;});
   game.units=game.units.filter(e=>{if(e.hp>0)return true;burst(e.x,e.y,'#dff6ff',8);return false;});
 }
 function summon(type){ if(!game?.running)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,training=game.training[type]||0,boost=(1+(level-1)*.08)*(1+training*.15);if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown;game.units.push({...u,unitType:type,id:crypto.randomUUID(),side:'cat',x:82+Math.random()*8,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost),heal:Math.round((u.heal||0)*boost)});playTone(440,.1,'triangle',.08); }
@@ -321,7 +324,7 @@ function spawnEnemy(){
   const pool=ENEMY_STAGE_POOLS[selectedStage];game.spawnCount++;
   const normalPool=selectedStage>=4&&pool.length>1?pool.slice(0,-1):pool;
   let type=normalPool[Math.floor(Math.random()*normalPool.length)];
-  if(selectedStage===STAGES.length-1&&game.spawnCount===10&&!game.finalBossSpawned){type='overlord';game.finalBossSpawned=true;game.bossWarning=3;playJingle([196,165,131,98],.16);}
+  if(game.bossType&&game.spawnCount===10&&!game.bossSpawned){type=game.bossType;game.bossSpawned=true;game.bossWarning=3;playJingle([196,165,131,98],.16);}
   else if(selectedStage>=4&&game.spawnCount%10===0)type=pool[pool.length-1];
   const e=ENEMY_TYPES[type],waveBoost=1+Math.min(.2,game.time/360);
   game.enemies.push({...e,id:crypto.randomUUID(),side:'enemy',kind:type,x:(canvas.viewWidth||800)-82,y:groundY(),attack:.4,hp:Math.round(e.hp*game.enemyScale*waveBoost),maxHp:Math.round(e.hp*game.enemyScale*waveBoost),damage:Math.round(e.damage*game.enemyScale*waveBoost)});
@@ -346,7 +349,7 @@ function finish(win){
 }
 function groundY(){return (canvas.viewHeight||400)*.77;}
 
-function draw(){ const w=canvas.viewWidth||800,h=canvas.viewHeight||400;ctx.clearRect(0,0,w,h);ctx.save();if(game?.shake)ctx.translate((Math.random()-.5)*game.shake,(Math.random()-.5)*game.shake);drawBackground(w,h);drawBase(55,groundY(),true,game?.playerHp??2500);drawBase(w-55,groundY(),false,game?.enemyHp??2500);if(game){game.units.forEach(drawUnit);game.enemies.forEach(drawEnemy);game.projectiles.forEach(drawProjectile);game.particles.forEach(drawParticle);if(game.bossWarning>0){ctx.fillStyle=game.finalBossDefeated?'#ffe56e':'#ff64db';ctx.font=`${Math.min(34,w/18)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(game.finalBossDefeated?'최종 보스 격파!':'최종 보스 강림!',w/2,70);}}ctx.restore(); }
+function draw(){ const w=canvas.viewWidth||800,h=canvas.viewHeight||400;ctx.clearRect(0,0,w,h);ctx.save();if(game?.shake)ctx.translate((Math.random()-.5)*game.shake,(Math.random()-.5)*game.shake);drawBackground(w,h);drawBase(55,groundY(),true,game?.playerHp??2500);drawBase(w-55,groundY(),false,game?.enemyHp??2500);if(game){game.units.forEach(drawUnit);game.enemies.forEach(drawEnemy);game.projectiles.forEach(drawProjectile);game.particles.forEach(drawParticle);if(game.bossWarning>0){ctx.fillStyle=game.bossDefeated?'#ffe56e':'#ff64db';ctx.font=`${Math.min(34,w/18)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(game.bossDefeated?`${game.bossName} 격파!`:`${game.bossName} 강림!`,w/2,70);}}ctx.restore(); }
 function drawBackground(w,h){
   const theme=STAGE_THEMES[selectedStage]||STAGE_THEMES[0],ground=groundY();
   const sky=ctx.createLinearGradient(0,0,0,ground);sky.addColorStop(0,theme.sky1);sky.addColorStop(1,theme.sky2);ctx.fillStyle=sky;ctx.fillRect(0,0,w,ground);
@@ -411,11 +414,11 @@ function drawUnitGear(type,size){
 }
 function drawEnemy(e){
   ctx.save();ctx.translate(e.x,e.y);if(e.hit)ctx.globalAlpha=.5;ctx.fillStyle=e.color;ctx.strokeStyle='#2b1b27';ctx.lineWidth=3;
-  const sizes={boar:28,gorilla:30,rhino:33,mech:31,demon:35,wolf:25,crab:32,bat:24,golem:38,sorcerer:29,overlord:52},size=sizes[e.kind]||20;
+  const sizes={boar:28,gorilla:30,rhino:33,mech:31,demon:35,wolf:25,crab:32,bat:24,golem:38,sorcerer:29,overlord:52,godOverlord:60},size=sizes[e.kind]||20;
   if(e.kind==='snake'){ctx.lineWidth=14;ctx.strokeStyle=e.color;ctx.beginPath();ctx.moveTo(-28,-5);ctx.bezierCurveTo(-18,-42,5,-3,22,-35);ctx.stroke();ctx.fillStyle='#222';ctx.beginPath();ctx.arc(18,-40,3,0,7);ctx.fill();}
   else if(e.kind==='bird'){ctx.beginPath();ctx.arc(0,-24,size,0,7);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-12,-27);ctx.lineTo(-40,-43);ctx.lineTo(-25,-13);ctx.fill();ctx.stroke();}
   else if(e.kind==='ghost'){ctx.globalAlpha*=.7;ctx.beginPath();ctx.arc(0,-35,size+7,Math.PI,0);ctx.lineTo(size+7,-4);ctx.lineTo(18,-12);ctx.lineTo(8,-4);ctx.lineTo(-4,-12);ctx.lineTo(-16,-4);ctx.lineTo(-size-7,-12);ctx.closePath();ctx.fill();ctx.stroke();}
-  else{ctx.beginPath();ctx.arc(0,-size,size,0,7);ctx.fill();ctx.stroke();if(e.kind==='rhino'){ctx.fillStyle='#eee';ctx.beginPath();ctx.moveTo(-32,-38);ctx.lineTo(-55,-50);ctx.lineTo(-30,-24);ctx.fill();}if(e.kind==='mech'){ctx.fillStyle='#e45b58';ctx.beginPath();ctx.arc(-8,-37,5,0,7);ctx.fill();ctx.fillStyle='#333';ctx.fillRect(-28,-8,12,13);ctx.fillRect(16,-8,12,13);}if(['demon','overlord'].includes(e.kind)){ctx.fillStyle='#241524';ctx.beginPath();ctx.moveTo(-size*.7,-size*1.55);ctx.lineTo(-size,-size*2.15);ctx.lineTo(-size*.25,-size*1.7);ctx.moveTo(size*.7,-size*1.55);ctx.lineTo(size,-size*2.15);ctx.lineTo(size*.25,-size*1.7);ctx.fill();}}
+  else{ctx.beginPath();ctx.arc(0,-size,size,0,7);ctx.fill();ctx.stroke();if(e.kind==='rhino'){ctx.fillStyle='#eee';ctx.beginPath();ctx.moveTo(-32,-38);ctx.lineTo(-55,-50);ctx.lineTo(-30,-24);ctx.fill();}if(e.kind==='mech'){ctx.fillStyle='#e45b58';ctx.beginPath();ctx.arc(-8,-37,5,0,7);ctx.fill();ctx.fillStyle='#333';ctx.fillRect(-28,-8,12,13);ctx.fillRect(16,-8,12,13);}if(['demon','overlord','godOverlord'].includes(e.kind)){ctx.fillStyle=e.kind==='godOverlord'?'#70d8ff':'#241524';ctx.beginPath();ctx.moveTo(-size*.7,-size*1.55);ctx.lineTo(-size,-size*2.15);ctx.lineTo(-size*.25,-size*1.7);ctx.moveTo(size*.7,-size*1.55);ctx.lineTo(size,-size*2.15);ctx.lineTo(size*.25,-size*1.7);ctx.fill();}}
   ctx.fillStyle='#2b1b27';ctx.beginPath();ctx.arc(-7,-size-3,3,0,7);ctx.arc(7,-size-3,3,0,7);ctx.fill();
   if(e.kind==='boar'){ctx.fillStyle='#eee';ctx.fillRect(-29,-25,8,18);ctx.fillRect(21,-25,8,18);}if(e.kind==='gorilla'){ctx.strokeStyle='#3b302e';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(-22,-15);ctx.lineTo(-38,-2);ctx.moveTo(22,-15);ctx.lineTo(38,-2);ctx.stroke();}
   if(e.kind==='wolf'){ctx.fillStyle=e.color;ctx.beginPath();ctx.moveTo(-22,-43);ctx.lineTo(-17,-73);ctx.lineTo(-3,-49);ctx.moveTo(22,-43);ctx.lineTo(17,-73);ctx.lineTo(3,-49);ctx.fill();}
@@ -423,7 +426,7 @@ function drawEnemy(e){
   if(e.kind==='bat'){ctx.fillStyle='#332747';ctx.beginPath();ctx.moveTo(-18,-35);ctx.lineTo(-55,-65);ctx.lineTo(-45,-22);ctx.lineTo(-20,-10);ctx.moveTo(18,-35);ctx.lineTo(55,-65);ctx.lineTo(45,-22);ctx.lineTo(20,-10);ctx.fill();}
   if(e.kind==='golem'){ctx.strokeStyle='#5f4c3b';ctx.lineWidth=7;ctx.strokeRect(-30,-72,60,62);ctx.beginPath();ctx.moveTo(-28,-50);ctx.lineTo(20,-25);ctx.moveTo(5,-67);ctx.lineTo(-12,-18);ctx.stroke();}
   if(e.kind==='sorcerer'){ctx.fillStyle='#242b70';ctx.beginPath();ctx.moveTo(-34,-47);ctx.lineTo(0,-92);ctx.lineTo(35,-47);ctx.fill();ctx.fillStyle='#84e8ff';ctx.beginPath();ctx.arc(31,-62,8,0,7);ctx.fill();}
-  if(e.kind==='overlord'){ctx.fillStyle='#ffd447';ctx.beginPath();ctx.moveTo(-28,-88);ctx.lineTo(-20,-120);ctx.lineTo(-5,-96);ctx.lineTo(9,-124);ctx.lineTo(27,-91);ctx.closePath();ctx.fill();ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('FINAL BOSS',0,-132);ctx.fillStyle='#16091d';ctx.fillRect(-55,8,110,9);ctx.fillStyle='#ff3fcf';ctx.fillRect(-55,8,110*Math.max(0,e.hp/e.maxHp),9);}
+  if(e.boss){ctx.fillStyle=e.kind==='godOverlord'?'#80eaff':'#ffd447';ctx.beginPath();ctx.moveTo(-28,-88);ctx.lineTo(-20,-120);ctx.lineTo(-5,-96);ctx.lineTo(9,-124);ctx.lineTo(27,-91);ctx.closePath();ctx.fill();ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(e.kind==='godOverlord'?'FINAL GOD BOSS':'STAGE BOSS',0,-140);ctx.fillStyle='#16091d';ctx.fillRect(-60,8,120,10);ctx.fillStyle=e.kind==='godOverlord'?'#55e8ff':'#ff3fcf';ctx.fillRect(-60,8,120*Math.max(0,e.hp/e.maxHp),10);}
   else healthMini(e);ctx.restore();
 }
 function healthMini(u){if(u.hp>=u.maxHp)return;ctx.fillStyle='#141525';ctx.fillRect(-22,4,44,5);ctx.fillStyle=u.side==='cat'?'#55d6be':'#ef476f';ctx.fillRect(-22,4,44*Math.max(0,u.hp/u.maxHp),5);}
