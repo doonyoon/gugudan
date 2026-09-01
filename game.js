@@ -113,6 +113,7 @@ const GACHA_POOLS = {
 const GACHA_RATES = [
   {rarity:'노멀',rate:50},{rarity:'EX',rate:25},{rarity:'레어',rate:9},{rarity:'슈퍼 레어',rate:10.7},{rarity:'울트라 슈퍼 레어',rate:5},{rarity:'레전드 레어',rate:.3}
 ];
+const GOLDEN_GACHA_RATES = GACHA_RATES.map(item=>({...item,rate:item.rate*(RARITY_RANK[item.rarity]>=RARITY_RANK['레어']?5:1)}));
 const GACHA_UNITS = Object.values(GACHA_POOLS).flat();
 const SAVE_KEY = 'cat-fortress-save-v2';
 const AUTH_ACCOUNTS_KEY = 'cat-fortress-accounts-v1';
@@ -157,6 +158,7 @@ $('#gacha-button').addEventListener('click', openGacha);
 $('#close-gacha').addEventListener('click', () => $('#gacha-dialog').close());
 $('#draw-button').addEventListener('click', drawGacha);
 $('#draw-ten-button').addEventListener('click', drawTenGacha);
+$('#golden-draw-button').addEventListener('click', drawGoldenGacha);
 $('#exit-battle').addEventListener('click', exitBattle);
 $('#coupon-form').addEventListener('submit', redeemCoupon);
 $('#lineup-button').addEventListener('click', openLineup);
@@ -216,23 +218,24 @@ function renderLineup(){
   document.querySelectorAll('.roster-card').forEach(button=>button.onclick=()=>equipUnit(button.dataset.roster));
 }
 function equipUnit(type){const other=progress.loadout.indexOf(type),current=progress.loadout[selectedLineupSlot];if(other>=0){progress.loadout[other]=current;}progress.loadout[selectedLineupSlot]=type;saveProgress();renderLineup();}
-function setGachaButtons(disabled=false){$('#draw-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<300);$('#draw-ten-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<3000);}
+function setGachaButtons(disabled=false){$('#draw-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<300);$('#draw-ten-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<3000);$('#golden-draw-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<1000);}
 function openGacha(){renderCollection();$('#gacha-result').className='gacha-result';$('#gacha-result').textContent='전설의 고양이에게 도전해 보세요!';$('#gacha-stage').className='gacha-stage';$('#confetti').innerHTML='';$('#coupon-message').textContent='특별 코드를 입력해 보세요.';$('#coupon-message').className='';setGachaButtons();$('#gacha-dialog').showModal();}
-function rollGacha(randomValue=Math.random()){
-  const roll=Math.min(999,Math.floor(randomValue*1000));
-  let cursor=0,rarity=GACHA_RATES[GACHA_RATES.length-1].rarity;
-  for(const item of GACHA_RATES){cursor+=Math.round(item.rate*10);if(roll<cursor){rarity=item.rarity;break;}}
+function rollGacha(randomValue=Math.random(),rates=GACHA_RATES){
+  const total=rates.reduce((sum,item)=>sum+item.rate,0),roll=Math.min(total-Number.EPSILON,randomValue*total);
+  let cursor=0,rarity=rates[rates.length-1].rarity;
+  for(const item of rates){cursor+=item.rate;if(roll<cursor){rarity=item.rarity;break;}}
   const pool=GACHA_POOLS[rarity];return pool[Math.floor(Math.random()*pool.length)];
 }
 function drawGacha(){performGacha(1);}
 function drawTenGacha(){performGacha(10);}
-function performGacha(count){
-  const cost=count*300;if(!isDeveloperAccount()&&progress.gold<cost)return;if(!isDeveloperAccount())progress.gold-=cost;
-  const results=Array.from({length:count},()=>{const type=rollGacha(),isNew=!progress.owned.includes(type);if(isNew){progress.owned.push(type);progress.levels[type]=1;}else progress.levels[type]=(progress.levels[type]||1)+1;return {type,isNew,level:progress.levels[type],rarity:UNIT_TYPES[type].rarity};});
+function drawGoldenGacha(){performGacha(1,true);}
+function performGacha(count,golden=false){
+  const cost=golden?1000:count*300;if(!isDeveloperAccount()&&progress.gold<cost)return;if(!isDeveloperAccount())progress.gold-=cost;
+  const rates=golden?GOLDEN_GACHA_RATES:GACHA_RATES,results=Array.from({length:count},()=>{const type=rollGacha(Math.random(),rates),isNew=!progress.owned.includes(type);if(isNew){progress.owned.push(type);progress.levels[type]=1;}else progress.levels[type]=(progress.levels[type]||1)+1;return {type,isNew,level:progress.levels[type],rarity:UNIT_TYPES[type].rarity};});
   const best=results.reduce((a,b)=>(RARITY_RANK[b.rarity]||0)>(RARITY_RANK[a.rarity]||0)?b:a),capsule=$('#capsule'),stage=$('#gacha-stage'),resultBox=$('#gacha-result');
-  capsule.classList.add('drawing');stage.className='gacha-stage';$('#confetti').innerHTML='';resultBox.className='gacha-result';resultBox.textContent=count===10?'10개의 황금 발바닥을 여는 중...':'기운을 모으는 중...';setGachaButtons(true);playJingle([262,330,392,494,587,698],.075);
+  capsule.classList.add('drawing');stage.className=golden?'gacha-stage golden':'gacha-stage';$('#confetti').innerHTML='';resultBox.className='gacha-result';resultBox.textContent=golden?'황금빛 기운을 모으는 중...':count===10?'10개의 황금 발바닥을 여는 중...':'기운을 모으는 중...';setGachaButtons(true);playJingle(golden?[392,523,659,784,1047]:[262,330,392,494,587,698],.075);
   setTimeout(()=>{capsule.classList.remove('drawing');stage.classList.add('revealing',best.rarity==='레전드 레어'?'legend':best.rarity==='울트라 슈퍼 레어'?'ultra':best.rarity==='슈퍼 레어'?'super':'normal');createConfetti(best.rarity);playRevealSound(best.rarity);},750);
-  setTimeout(()=>{stage.classList.remove('revealing');if(count===1){const item=results[0];resultBox.innerHTML=`<strong>${item.rarity} · ${UNIT_TYPES[item.type].label}</strong><br>${item.isNew?'새 캐릭터 획득!':`중복 획득! Lv.${item.level} 강화`}`;}else{resultBox.className='gacha-result ten-results';resultBox.innerHTML=results.map((item,index)=>`<span><b>${index+1}. ${item.rarity}</b><br>${UNIT_TYPES[item.type].label}<em>${item.isNew?'NEW':`Lv.${item.level}`}</em></span>`).join('');}saveProgress();setGachaButtons();},1500);
+  setTimeout(()=>{stage.classList.remove('revealing');if(count===1){const item=results[0];resultBox.innerHTML=`${golden?'<b>✨ 황금 뽑기 ✨</b><br>':''}<strong>${item.rarity} · ${UNIT_TYPES[item.type].label}</strong><br>${item.isNew?'새 캐릭터 획득!':`중복 획득! Lv.${item.level} 강화`}`;}else{resultBox.className='gacha-result ten-results';resultBox.innerHTML=results.map((item,index)=>`<span><b>${index+1}. ${item.rarity}</b><br>${UNIT_TYPES[item.type].label}<em>${item.isNew?'NEW':`Lv.${item.level}`}</em></span>`).join('');}saveProgress();setGachaButtons();},1500);
 }
 function createConfetti(rarity){
   const colors=rarity==='레전드 레어'?['#ffd447','#fff','#ff8c42']:rarity==='울트라 슈퍼 레어'?['#67dbff','#a98cff','#fff']:['#ffd447','#ef476f','#55d6be','#8b7cff'];

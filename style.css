@@ -126,6 +126,9 @@ dialog li { margin:10px 0; line-height:1.6; }
 .gacha-result.ten-results b { color:var(--yellow); }.gacha-result.ten-results em { float:right; color:#72e2c4; font-size:.65rem; font-style:normal; }
 .gacha-buttons { display:grid; grid-template-columns:1fr 1fr; gap:8px; }.gacha-buttons .main-button { min-width:0; padding:12px 8px; font-size:1rem; }
 .ten-draw-button { background:linear-gradient(135deg,#ffd447,#ff8c42); }
+.golden-draw-button { grid-column:1/-1; color:#4a2800; background:linear-gradient(135deg,#fff3a1,#ffbf20 48%,#ff7a00); box-shadow:0 6px 0 #9a4d00,0 0 20px rgba(255,202,45,.35); }
+.golden-rate-note { margin:7px 0!important; color:#ffe568!important; font-size:.75rem; font-weight:700; }
+.gacha-stage.golden { filter:drop-shadow(0 0 22px #ffc928); }.gacha-stage.golden .capsule { background:radial-gradient(circle at 35% 25%,#fff,#ffe568 40%,#f28b00); box-shadow:0 0 40px #ffca32; }
 .rate-table { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:14px; }
 .rate-table span { padding:5px 3px; border-radius:7px; background:#111426; color:#bbc1db; font-size:.66rem; }
 .rate-table b { color:var(--yellow); }
