@@ -14,6 +14,7 @@ button { touch-action:manipulation; }
 .auth-card input { width:100%; padding:12px; border:2px solid #596081; border-radius:10px; background:#111426; color:#fff; font-size:1rem; outline:none; }
 .auth-card input:focus { border-color:var(--yellow); }.auth-card .main-button { width:100%; margin-top:4px; }
 .signup-button { padding:11px; border:2px solid #68719b; border-radius:11px; background:#2b3151; color:#fff; font-weight:700; cursor:pointer; }
+.reset-password-button { padding:9px; border:0; background:transparent; color:#aeb5d2; text-decoration:underline; cursor:pointer; }
 .auth-card small { min-height:22px; color:#ff8da4; text-align:center; }.auth-card small.success { color:#63e1bd; }
 .auth-card em { margin-top:4px; color:#8f97b8; font-size:.68rem; font-style:normal; text-align:center; }
 .app.auth-locked { display:none; }.account-name { max-width:100px; overflow:hidden; color:var(--yellow); font-size:.72rem; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
