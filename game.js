@@ -115,9 +115,11 @@ const SAVE_KEY = 'cat-fortress-save-v2';
 const AUTH_ACCOUNTS_KEY = 'cat-fortress-accounts-v1';
 const AUTH_SESSION_KEY = 'cat-fortress-session-v1';
 const AUTH_REPAIR_KEY = 'cat-fortress-account-repair-v2';
+const DEVELOPER_ID = 'doonyoon';
+const DEVELOPER_PASSWORD_HASH = '3611d9d3a3b7b2eb3abd6acf37072a252d2ee41cd08e28223b7d9818ff929a41';
 repairDuplicatedAccountSaves();
 let activeUser = localStorage.getItem(AUTH_SESSION_KEY) || '';
-if(activeUser && !loadAccounts()[activeUser]){activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);}
+if(activeUser&&activeUser!==DEVELOPER_ID&&!loadAccounts()[activeUser]){activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);}
 
 let progress = loadProgress();
 let selectedStage = Math.min(progress.highestStage, STAGES.length-1);
@@ -169,23 +171,26 @@ function repairDuplicatedAccountSaves(){
   localStorage.setItem(AUTH_REPAIR_KEY,'done');
 }
 function progressKey(){return activeUser?`${SAVE_KEY}:${activeUser}`:SAVE_KEY;}
+function isDeveloperAccount(){return activeUser===DEVELOPER_ID;}
+function developerProgress(){const owned=Object.keys(UNIT_TYPES);return {gold:Number.MAX_SAFE_INTEGER,highestStage:STAGES.length-1,cleared:STAGES.map((_,index)=>index),owned,loadout:[...BASIC_UNITS],levels:Object.fromEntries(owned.map(type=>[type,99])),redeemedCodes:['9027']};}
 async function hashPassword(password){const data=new TextEncoder().encode(password);const hash=await crypto.subtle.digest('SHA-256',data);return [...new Uint8Array(hash)].map(value=>value.toString(16).padStart(2,'0')).join('');}
 function authValues(){return {id:$('#auth-id').value.trim(),password:$('#auth-password').value,message:$('#auth-message')};}
 function validAccount(id,password,message){message.className='';if(!/^[A-Za-z0-9가-힣_]{3,16}$/.test(id)){message.textContent='아이디는 3~16자의 한글, 영문, 숫자, 밑줄만 사용할 수 있어요.';return false;}if(password.length<4){message.textContent='비밀번호는 4자 이상 입력하세요.';return false;}return true;}
-async function signupAccount(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const accounts=loadAccounts();if(accounts[id]){message.textContent='이미 사용 중인 아이디예요.';return;}const isFirstAccount=Object.keys(accounts).length===0;accounts[id]={password:await hashPassword(password),createdAt:Date.now()};localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));const oldSave=localStorage.getItem(SAVE_KEY);if(isFirstAccount&&oldSave&&!localStorage.getItem(`${SAVE_KEY}:${id}`))localStorage.setItem(`${SAVE_KEY}:${id}`,oldSave);message.textContent='회원가입 완료! 자동으로 로그인했어요.';message.className='success';activateAccount(id);}
-async function loginAccount(event){event.preventDefault();const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const account=loadAccounts()[id];if(!account||account.password!==await hashPassword(password)){message.textContent='아이디 또는 비밀번호가 맞지 않아요.';return;}activateAccount(id);}
-async function resetPassword(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const accounts=loadAccounts();if(!accounts[id]){message.textContent='저장된 계정을 찾을 수 없어요.';return;}if(!window.confirm(`${id} 계정의 비밀번호를 새로 입력한 비밀번호로 바꿀까요?`))return;accounts[id].password=await hashPassword(password);accounts[id].passwordChangedAt=Date.now();localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));message.textContent='비밀번호를 변경했어요. 자동으로 로그인합니다.';message.className='success';activateAccount(id);}
+async function signupAccount(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;if(id===DEVELOPER_ID){message.textContent='예약된 개발자 아이디예요.';return;}const accounts=loadAccounts();if(accounts[id]){message.textContent='이미 사용 중인 아이디예요.';return;}const isFirstAccount=Object.keys(accounts).length===0;accounts[id]={password:await hashPassword(password),createdAt:Date.now()};localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));const oldSave=localStorage.getItem(SAVE_KEY);if(isFirstAccount&&oldSave&&!localStorage.getItem(`${SAVE_KEY}:${id}`))localStorage.setItem(`${SAVE_KEY}:${id}`,oldSave);message.textContent='회원가입 완료! 자동으로 로그인했어요.';message.className='success';activateAccount(id);}
+async function loginAccount(event){event.preventDefault();const {id,password,message}=authValues();if(!validAccount(id,password,message))return;const passwordHash=await hashPassword(password);if(id===DEVELOPER_ID){if(passwordHash!==DEVELOPER_PASSWORD_HASH){message.textContent='아이디 또는 비밀번호가 맞지 않아요.';return;}activateAccount(id);return;}const account=loadAccounts()[id];if(!account||account.password!==passwordHash){message.textContent='아이디 또는 비밀번호가 맞지 않아요.';return;}activateAccount(id);}
+async function resetPassword(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;if(id===DEVELOPER_ID){message.textContent='개발자 계정 비밀번호는 변경할 수 없어요.';return;}const accounts=loadAccounts();if(!accounts[id]){message.textContent='저장된 계정을 찾을 수 없어요.';return;}if(!window.confirm(`${id} 계정의 비밀번호를 새로 입력한 비밀번호로 바꿀까요?`))return;accounts[id].password=await hashPassword(password);accounts[id].passwordChangedAt=Date.now();localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));message.textContent='비밀번호를 변경했어요. 자동으로 로그인합니다.';message.className='success';activateAccount(id);}
 function activateAccount(id){activeUser=id;localStorage.setItem(AUTH_SESSION_KEY,id);progress=loadProgress();selectedStage=Math.min(progress.highestStage,STAGES.length-1);game=null;setAuthView();renderMeta();requestAnimationFrame(()=>{resizeCanvas();draw();});}
 function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;game=null;cancelAnimationFrame(animationId);activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());setAuthView();}
 function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
 
 function loadProgress(){
+  if(isDeveloperAccount())return developerProgress();
   const fallback={gold:0,highestStage:0,cleared:[],owned:[...BASIC_UNITS],loadout:[...BASIC_UNITS],levels:{runner:1,tank:1,fighter:1,mage:1},redeemedCodes:[]};
   try{const saved=JSON.parse(localStorage.getItem(progressKey()));if(!saved)return fallback;const owned=[...new Set([...BASIC_UNITS,...(saved.owned||[])])],loadout=(saved.loadout||BASIC_UNITS).filter(type=>owned.includes(type)).slice(0,4);while(loadout.length<4){const next=BASIC_UNITS.find(type=>!loadout.includes(type));loadout.push(next);}return {...fallback,...saved,owned,loadout,levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
 }
-function saveProgress(){localStorage.setItem(progressKey(),JSON.stringify(progress));renderMeta();}
+function saveProgress(){if(!isDeveloperAccount())localStorage.setItem(progressKey(),JSON.stringify(progress));renderMeta();}
 function renderMeta(){
-  $('#gold').textContent=progress.gold.toLocaleString();
+  $('#gold').textContent=isDeveloperAccount()?'∞':progress.gold.toLocaleString();
   $('#stage-picker').innerHTML=STAGES.map((s,i)=>`<button class="stage-button ${i===selectedStage?'selected':''}" data-stage="${i}" ${i>progress.highestStage?'disabled':''}>${i+1}${progress.cleared.includes(i)?' ✓':''}</button>`).join('');
   document.querySelectorAll('.stage-button').forEach(b=>b.onclick=()=>{selectedStage=Number(b.dataset.stage);renderMeta();});
   const stage=STAGES[selectedStage];$('#stage-description').textContent=`${selectedStage+1}. ${stage.name} · 승리 보상 ${stage.reward} 골드`;$('#stage-label').textContent=`STAGE ${selectedStage+1}`;
@@ -207,7 +212,7 @@ function renderLineup(){
   document.querySelectorAll('.roster-card').forEach(button=>button.onclick=()=>equipUnit(button.dataset.roster));
 }
 function equipUnit(type){const other=progress.loadout.indexOf(type),current=progress.loadout[selectedLineupSlot];if(other>=0){progress.loadout[other]=current;}progress.loadout[selectedLineupSlot]=type;saveProgress();renderLineup();}
-function setGachaButtons(disabled=false){$('#draw-button').disabled=disabled||progress.gold<300;$('#draw-ten-button').disabled=disabled||progress.gold<3000;}
+function setGachaButtons(disabled=false){$('#draw-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<300);$('#draw-ten-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<3000);}
 function openGacha(){renderCollection();$('#gacha-result').className='gacha-result';$('#gacha-result').textContent='전설의 고양이에게 도전해 보세요!';$('#gacha-stage').className='gacha-stage';$('#confetti').innerHTML='';$('#coupon-message').textContent='특별 코드를 입력해 보세요.';$('#coupon-message').className='';setGachaButtons();$('#gacha-dialog').showModal();}
 function rollGacha(randomValue=Math.random()){
   const roll=Math.min(999,Math.floor(randomValue*1000));
@@ -218,7 +223,7 @@ function rollGacha(randomValue=Math.random()){
 function drawGacha(){performGacha(1);}
 function drawTenGacha(){performGacha(10);}
 function performGacha(count){
-  const cost=count*300;if(progress.gold<cost)return;progress.gold-=cost;
+  const cost=count*300;if(!isDeveloperAccount()&&progress.gold<cost)return;if(!isDeveloperAccount())progress.gold-=cost;
   const results=Array.from({length:count},()=>{const type=rollGacha(),isNew=!progress.owned.includes(type);if(isNew){progress.owned.push(type);progress.levels[type]=1;}else progress.levels[type]=(progress.levels[type]||1)+1;return {type,isNew,level:progress.levels[type],rarity:UNIT_TYPES[type].rarity};});
   const best=results.reduce((a,b)=>(RARITY_RANK[b.rarity]||0)>(RARITY_RANK[a.rarity]||0)?b:a),capsule=$('#capsule'),stage=$('#gacha-stage'),resultBox=$('#gacha-result');
   capsule.classList.add('drawing');stage.className='gacha-stage';$('#confetti').innerHTML='';resultBox.className='gacha-result';resultBox.textContent=count===10?'10개의 황금 발바닥을 여는 중...':'기운을 모으는 중...';setGachaButtons(true);playJingle([262,330,392,494,587,698],.075);
