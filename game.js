@@ -148,6 +148,7 @@ function resizeCanvas() {
 }
 new ResizeObserver(resizeCanvas).observe($('#battlefield'));
 window.addEventListener('resize',resizeCanvas);
+window.addEventListener('orientationchange',()=>setTimeout(()=>{resizeCanvas();draw();},150));
 
 $('#start-button').addEventListener('click', startBattle);
 $('#worker-button').addEventListener('click', upgradeWorker);
