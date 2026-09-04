@@ -188,7 +188,9 @@ async function loginAccount(event){event.preventDefault();const {id,password,mes
 async function resetPassword(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;if(id===DEVELOPER_ID){message.textContent='개발자 계정 비밀번호는 변경할 수 없어요.';return;}const accounts=loadAccounts();if(!accounts[id]){message.textContent='저장된 계정을 찾을 수 없어요.';return;}if(!window.confirm(`${id} 계정의 비밀번호를 새로 입력한 비밀번호로 바꿀까요?`))return;accounts[id].password=await hashPassword(password);accounts[id].passwordChangedAt=Date.now();localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));message.textContent='비밀번호를 변경했어요. 자동으로 로그인합니다.';message.className='success';activateAccount(id);}
 function activateAccount(id){activeUser=id;localStorage.setItem(AUTH_SESSION_KEY,id);progress=loadProgress();selectedStage=Math.min(progress.highestStage,STAGES.length-1);game=null;setAuthView();renderMeta();requestAnimationFrame(()=>{resizeCanvas();draw();});}
 function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;game=null;cancelAnimationFrame(animationId);activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());setAuthView();}
-function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
+function setMusicPlayer(selector,active){const player=$(selector);if(!player)return;if(active&&!player.hasAttribute('src'))player.src=player.dataset.src;if(!active&&player.hasAttribute('src'))player.removeAttribute('src');}
+function setLobbyMusic(active){setMusicPlayer('#lobby-music-player',active);}
+function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';setMusicPlayer('#login-music-player',!loggedIn);setLobbyMusic(loggedIn);if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
 
 function loadProgress(){
   if(isDeveloperAccount())return developerProgress();
@@ -251,12 +253,12 @@ function redeemCoupon(event){
 }
 
 function startBattle() {
-  initAudio();resizeCanvas();game=createGame(); $('#stage-label').textContent=`STAGE ${selectedStage+1}`; $('#start-overlay').classList.add('hidden'); $('#battle-message').classList.add('hidden'); $('#exit-battle').classList.remove('hidden'); $('#training-panel').classList.remove('hidden'); renderTraining(); lastTime=performance.now(); cancelAnimationFrame(animationId); animationId=requestAnimationFrame(loop); playJingle([392,523,659]);
+  initAudio();setLobbyMusic(false);resizeCanvas();game=createGame(); $('#stage-label').textContent=`STAGE ${selectedStage+1}`; $('#start-overlay').classList.add('hidden'); $('#battle-message').classList.add('hidden'); $('#exit-battle').classList.remove('hidden'); $('#training-panel').classList.remove('hidden'); renderTraining(); lastTime=performance.now(); cancelAnimationFrame(animationId); animationId=requestAnimationFrame(loop); playJingle([392,523,659]);
 }
 function exitBattle(){
   if(!game?.running)return;
   if(!window.confirm('현재 전투를 포기하고 인트로로 돌아갈까요?\n사용한 물고기와 전투 강화는 사라집니다.'))return;
-  game.running=false;cancelAnimationFrame(animationId);game=null;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');renderMeta();playTone(220,.2,'triangle',.06);
+  game.running=false;cancelAnimationFrame(animationId);game=null;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setLobbyMusic(true);renderMeta();playTone(220,.2,'triangle',.06);
 }
 function loop(now) {
   const dt=Math.min((now-lastTime)/1000,.04); lastTime=now; if(game?.running) update(dt); draw(); updateUI(); if(game?.running) animationId=requestAnimationFrame(loop);
@@ -349,7 +351,7 @@ function finish(win){
   game.running=false;game.result=win;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');let reward=0;
   if(win){reward=STAGES[selectedStage].reward;progress.gold+=reward;if(!progress.cleared.includes(selectedStage))progress.cleared.push(selectedStage);progress.highestStage=Math.max(progress.highestStage,Math.min(STAGES.length-1,selectedStage+1));saveProgress();}
   const box=$('#battle-message');box.innerHTML=`<span>${win?'승리!':'패배...'}</span>${win?`<small>+${reward} 골드 🪙</small>`:''}<button class="main-button" id="retry-button">스테이지 선택</button>`;box.classList.remove('hidden');
-  $('#retry-button').onclick=()=>{$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');renderMeta();};playJingle(win?[523,659,784,1047]:[330,247,196],.18);
+  $('#retry-button').onclick=()=>{$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setLobbyMusic(true);renderMeta();};playJingle(win?[523,659,784,1047]:[330,247,196],.18);
 }
 function groundY(){return (canvas.viewHeight||400)*.77;}
 
