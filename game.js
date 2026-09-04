@@ -130,6 +130,7 @@ let selectedStage = Math.min(progress.highestStage, STAGES.length-1);
 let selectedLineupSlot = 0;
 
 let game = null, animationId = null, lastTime = 0, audio = null, soundOn = false, bgmTrack = '';
+const GACHA_SOUND_ID = '2VBLmiFQJ0Q', GACHA_POP_DELAY = 1500, GACHA_RESULT_DELAY = 2250;
 let unitButtons = [];
 
 function createGame() {
@@ -157,7 +158,7 @@ $('#close-help').addEventListener('click', () => $('#help-dialog').close());
 $('#sound-button').addEventListener('click', toggleSound);
 $('#auth-sound-button').addEventListener('click', toggleSound);
 $('#gacha-button').addEventListener('click', openGacha);
-$('#close-gacha').addEventListener('click', () => $('#gacha-dialog').close());
+$('#close-gacha').addEventListener('click', () => { stopGachaSound();$('#gacha-dialog').close(); });
 $('#draw-button').addEventListener('click', drawGacha);
 $('#draw-ten-button').addEventListener('click', drawTenGacha);
 $('#golden-draw-button').addEventListener('click', drawGoldenGacha);
@@ -191,7 +192,10 @@ function activateAccount(id){activeUser=id;localStorage.setItem(AUTH_SESSION_KEY
 function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;game=null;cancelAnimationFrame(animationId);activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());setAuthView();}
 function setBgmTrack(videoId){if(bgmTrack===videoId)return;bgmTrack=videoId;const mute=soundOn?0:1;$('#bgm-player').src=`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${mute}&loop=1&playlist=${videoId}&controls=0&start=1&enablejsapi=1`;}
 function syncSoundButtons(){const icon=soundOn?'🔊':'🔇';$('#sound-button').textContent=icon;$('#sound-button').ariaLabel=soundOn?'소리 끄기':'소리 켜기';$('#auth-sound-button').textContent=`${icon} BGM`;$('#auth-sound-button').ariaLabel=soundOn?'배경음악 끄기':'배경음악 켜기';}
-function toggleSound(){soundOn=!soundOn;syncSoundButtons();const command=soundOn?'unMute':'mute';$('#bgm-player').contentWindow?.postMessage(JSON.stringify({event:'command',func:command,args:[]}), '*');if(soundOn)initAudio();}
+function playerCommand(player,command){player?.contentWindow?.postMessage(JSON.stringify({event:'command',func:command,args:[]}), '*');}
+function toggleSound(){soundOn=!soundOn;syncSoundButtons();const command=soundOn?'unMute':'mute';playerCommand($('#bgm-player'),command);playerCommand($('#gacha-sound-player'),command);if(soundOn)initAudio();}
+function playGachaSound(){const player=$('#gacha-sound-player'),mute=soundOn?0:1;player.removeAttribute('src');requestAnimationFrame(()=>{player.src=`https://www.youtube.com/embed/${GACHA_SOUND_ID}?autoplay=1&mute=${mute}&controls=0&start=1&enablejsapi=1`;});}
+function stopGachaSound(){$('#gacha-sound-player').removeAttribute('src');}
 function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';setBgmTrack(loggedIn?'xM911Syufvg':'HdTkXL6BTSM');syncSoundButtons();if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
 
 function loadProgress(){
@@ -238,9 +242,9 @@ function performGacha(count,golden=false){
   const cost=golden?1000:count*300;if(!isDeveloperAccount()&&progress.gold<cost)return;if(!isDeveloperAccount())progress.gold-=cost;
   const rates=golden?GOLDEN_GACHA_RATES:GACHA_RATES,results=Array.from({length:count},()=>{const type=rollGacha(Math.random(),rates),isNew=!progress.owned.includes(type);if(isNew){progress.owned.push(type);progress.levels[type]=1;}else progress.levels[type]=(progress.levels[type]||1)+1;return {type,isNew,level:progress.levels[type],rarity:UNIT_TYPES[type].rarity};});
   const best=results.reduce((a,b)=>(RARITY_RANK[b.rarity]||0)>(RARITY_RANK[a.rarity]||0)?b:a),capsule=$('#capsule'),stage=$('#gacha-stage'),resultBox=$('#gacha-result');
-  capsule.classList.add('drawing');stage.className=golden?'gacha-stage golden':'gacha-stage';$('#confetti').innerHTML='';resultBox.className='gacha-result';resultBox.textContent=golden?'황금빛 기운을 모으는 중...':count===10?'10개의 황금 발바닥을 여는 중...':'기운을 모으는 중...';setGachaButtons(true);playJingle(golden?[392,523,659,784,1047]:[262,330,392,494,587,698],.075);
-  setTimeout(()=>{capsule.classList.remove('drawing');stage.classList.add('revealing',best.rarity==='레전드 레어'?'legend':best.rarity==='울트라 슈퍼 레어'?'ultra':best.rarity==='슈퍼 레어'?'super':'normal');createConfetti(best.rarity);playRevealSound(best.rarity);},750);
-  setTimeout(()=>{stage.classList.remove('revealing');if(count===1){const item=results[0];resultBox.innerHTML=`${golden?'<b>✨ 황금 뽑기 ✨</b><br>':''}<strong>${item.rarity} · ${UNIT_TYPES[item.type].label}</strong><br>${item.isNew?'새 캐릭터 획득!':`중복 획득! Lv.${item.level} 강화`}`;}else{resultBox.className='gacha-result ten-results';resultBox.innerHTML=results.map((item,index)=>`<span><b>${index+1}. ${item.rarity}</b><br>${UNIT_TYPES[item.type].label}<em>${item.isNew?'NEW':`Lv.${item.level}`}</em></span>`).join('');}saveProgress();setGachaButtons();},1500);
+  capsule.classList.add('drawing');stage.className=golden?'gacha-stage golden':'gacha-stage';$('#confetti').innerHTML='';resultBox.className='gacha-result';resultBox.textContent=golden?'황금빛 기운을 모으는 중...':count===10?'10개의 황금 발바닥을 여는 중...':'기운을 모으는 중...';setGachaButtons(true);playGachaSound();
+  setTimeout(()=>{capsule.classList.remove('drawing');stage.classList.add('revealing',best.rarity==='레전드 레어'?'legend':best.rarity==='울트라 슈퍼 레어'?'ultra':best.rarity==='슈퍼 레어'?'super':'normal');createConfetti(best.rarity);},GACHA_POP_DELAY);
+  setTimeout(()=>{stage.classList.remove('revealing');stopGachaSound();if(count===1){const item=results[0];resultBox.innerHTML=`${golden?'<b>✨ 황금 뽑기 ✨</b><br>':''}<strong>${item.rarity} · ${UNIT_TYPES[item.type].label}</strong><br>${item.isNew?'새 캐릭터 획득!':`중복 획득! Lv.${item.level} 강화`}`;}else{resultBox.className='gacha-result ten-results';resultBox.innerHTML=results.map((item,index)=>`<span><b>${index+1}. ${item.rarity}</b><br>${UNIT_TYPES[item.type].label}<em>${item.isNew?'NEW':`Lv.${item.level}`}</em></span>`).join('');}saveProgress();setGachaButtons();},GACHA_RESULT_DELAY);
 }
 function createConfetti(rarity){
   const colors=rarity==='레전드 레어'?['#ffd447','#fff','#ff8c42']:rarity==='울트라 슈퍼 레어'?['#67dbff','#a98cff','#fff']:['#ffd447','#ef476f','#55d6be','#8b7cff'];
