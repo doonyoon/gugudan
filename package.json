@@ -1,0 +1,12 @@
+{
+  "name": "goyangi-seongchaejeon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "고양이 성채전 웹게임 서버",
+  "scripts": {
+    "start": "node dev-server.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

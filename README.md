@@ -12,12 +12,18 @@ python -m http.server 8000
 
 브라우저에서 `http://localhost:8000`으로 접속합니다.
 
+## 공개 Node 서버 배포
+
+프로젝트의 `render.yaml`을 사용해 Render Web Service로 배포할 수 있습니다. 서버는 공개 호스팅의 `PORT` 환경 변수와 `0.0.0.0` 바인딩을 지원하고, `/health` 상태 확인 주소를 제공합니다. Node 서버에서 실행하면 canonical·robots·sitemap 주소가 현재 공개 도메인으로 자동 변경됩니다.
+
 ## 구성
 
 - `index.html`: 게임 화면과 접근성 구조
 - `style.css`: PC·모바일·가로 화면 반응형 디자인
 - `game.js`: Canvas 전투, 유닛, 적, 자원, 사운드 시스템
 - `.github/workflows/deploy-pages.yml`: GitHub Pages 자동 배포
+- `dev-server.cjs`: 로컬 및 공개 배포용 Node 정적 서버
+- `render.yaml`: Render 자동 배포 설정
 
 외부 패키지나 빌드 과정은 필요하지 않습니다.
 
