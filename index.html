@@ -18,7 +18,7 @@
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"VideoGame","name":"고양이 성채전","url":"https://doonyoon.github.io/gugudan/","description":"고양이 부대를 편성하고 20개 스테이지와 보스를 공략하는 무료 웹 디펜스 게임","inLanguage":"ko-KR","genre":["디펜스","전략","캐주얼"],"gamePlatform":"Web Browser","applicationCategory":"Game","operatingSystem":"Any","isAccessibleForFree":true,"author":{"@type":"Person","name":"doonyoon"}}
   </script>
-  <link rel="stylesheet" href="style.css?v=20260904-music1">
+  <link rel="stylesheet" href="style.css?v=20260904-bgm1">
 </head>
 <body>
   <aside class="orientation-lock" id="orientation-lock" aria-live="polite">
@@ -42,10 +42,7 @@
       <button class="reset-password-button" id="reset-password-button" type="button">비밀번호 재설정</button>
       <em>계정은 현재 브라우저에 저장됩니다.</em>
     </form>
-    <div class="screen-music login-music">
-      <strong>🎵 로그인 화면 음악</strong>
-      <iframe id="login-music-player" data-src="https://www.youtube.com/embed/HdTkXL6BTSM?si=LibFVbuT5rZC0X_6&amp;controls=0&amp;start=1" src="https://www.youtube.com/embed/HdTkXL6BTSM?si=LibFVbuT5rZC0X_6&amp;controls=0&amp;start=1" title="로그인 화면 배경음악" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-    </div>
+    <button id="auth-sound-button" class="auth-sound-button" type="button" aria-label="배경음악 켜기">🔇 BGM</button>
   </section>
   <main class="app">
     <header class="topbar">
@@ -59,7 +56,7 @@
         <div class="gold-display" title="보유 골드"><span>🪙</span><strong id="gold">0</strong></div>
         <button id="lineup-button" class="icon-button lineup-icon" type="button" aria-label="출전 슬롯 편성">편성</button>
         <button id="gacha-button" class="icon-button gacha-icon" type="button" aria-label="캐릭터 뽑기">🎁</button>
-        <button id="sound-button" class="icon-button" type="button" aria-label="소리 끄기">🔊</button>
+        <button id="sound-button" class="icon-button" type="button" aria-label="소리 켜기">🔇</button>
         <button id="help-button" class="icon-button" type="button" aria-label="도움말">?</button>
       </div>
     </header>
@@ -88,10 +85,6 @@
         <div class="stage-picker" id="stage-picker" aria-label="스테이지 선택"></div>
         <p class="stage-description" id="stage-description"></p>
         <button id="start-button" class="main-button" type="button">출격!</button>
-        <div class="screen-music lobby-music">
-          <strong>🎵 로비 음악</strong>
-          <iframe id="lobby-music-player" data-src="https://www.youtube.com/embed/xM911Syufvg?si=ZRRzDWVUOyPAXGcL&amp;start=1" title="로비 배경음악" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-        </div>
       </div>
     </section>
 
@@ -161,6 +154,7 @@
     <h3>보유 캐릭터</h3>
     <div class="roster" id="roster"></div>
   </dialog>
-  <script src="game.js?v=20260904-music1"></script>
+  <iframe id="bgm-player" class="bgm-player" title="게임 배경음악" allow="autoplay"></iframe>
+  <script src="game.js?v=20260904-bgm1"></script>
 </body>
 </html>

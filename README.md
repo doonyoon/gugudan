@@ -21,7 +21,7 @@ python -m http.server 8000
 - `index.html`: 게임 화면과 접근성 구조
 - `style.css`: PC·모바일·가로 화면 반응형 디자인
 - 모바일 세로 화면 차단과 가로 화면 전용 전투 레이아웃
-- 로그인 화면과 로비 화면에 각각 전용 YouTube 음악 플레이어
+- 로그인·로비별 영상은 숨기고 반복 재생하는 전용 BGM과 음소거 버튼
 - `game.js`: Canvas 전투, 유닛, 적, 자원, 사운드 시스템
 - `.github/workflows/deploy-pages.yml`: GitHub Pages 자동 배포
 - `dev-server.cjs`: 로컬 및 공개 배포용 Node 정적 서버
