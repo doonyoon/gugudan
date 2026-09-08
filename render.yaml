@@ -10,3 +10,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: goyangi-seongchaejeon-db
+          property: connectionString
+databases:
+  - name: goyangi-seongchaejeon-db
+    plan: free
+    databaseName: goyangi
+    user: goyangi

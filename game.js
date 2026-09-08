@@ -120,11 +120,8 @@ const AUTH_ACCOUNTS_KEY = 'cat-fortress-accounts-v1';
 const AUTH_SESSION_KEY = 'cat-fortress-session-v1';
 const AUTH_REPAIR_KEY = 'cat-fortress-account-repair-v2';
 const DEVELOPER_ID = 'doonyoon';
-const DEVELOPER_PASSWORD = 'kk45537606';
 repairDuplicatedAccountSaves();
-let activeUser = localStorage.getItem(AUTH_SESSION_KEY) || '';
-if(activeUser&&activeUser!==DEVELOPER_ID&&!loadAccounts()[activeUser]){activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);}
-
+let authToken=localStorage.getItem(AUTH_SESSION_KEY)||'',activeUser='';
 let progress = loadProgress();
 let selectedStage = Math.min(progress.highestStage, STAGES.length-1);
 let selectedLineupSlot = 0;
@@ -185,11 +182,14 @@ function developerProgress(){const owned=Object.keys(UNIT_TYPES);return {gold:Nu
 async function hashPassword(password){const data=new TextEncoder().encode(password);const hash=await crypto.subtle.digest('SHA-256',data);return [...new Uint8Array(hash)].map(value=>value.toString(16).padStart(2,'0')).join('');}
 function authValues(){return {id:$('#auth-id').value.trim(),password:$('#auth-password').value,message:$('#auth-message')};}
 function validAccount(id,password,message){message.className='';if(!/^[A-Za-z0-9가-힣_]{3,16}$/.test(id)){message.textContent='아이디는 3~16자의 한글, 영문, 숫자, 밑줄만 사용할 수 있어요.';return false;}if(password.length<4){message.textContent='비밀번호는 4자 이상 입력하세요.';return false;}return true;}
-async function signupAccount(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;if(id===DEVELOPER_ID){message.textContent='예약된 개발자 아이디예요.';return;}const accounts=loadAccounts();if(accounts[id]){message.textContent='이미 사용 중인 아이디예요.';return;}const isFirstAccount=Object.keys(accounts).length===0;accounts[id]={password:await hashPassword(password),createdAt:Date.now()};localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));const oldSave=localStorage.getItem(SAVE_KEY);if(isFirstAccount&&oldSave&&!localStorage.getItem(`${SAVE_KEY}:${id}`))localStorage.setItem(`${SAVE_KEY}:${id}`,oldSave);message.textContent='회원가입 완료! 자동으로 로그인했어요.';message.className='success';activateAccount(id);}
-async function loginAccount(event){event.preventDefault();const {id,password,message}=authValues();if(!validAccount(id,password,message))return;if(id===DEVELOPER_ID){if(password!==DEVELOPER_PASSWORD){message.textContent='아이디 또는 비밀번호가 맞지 않아요.';return;}activateAccount(id);return;}const passwordHash=await hashPassword(password),account=loadAccounts()[id];if(!account||account.password!==passwordHash){message.textContent='아이디 또는 비밀번호가 맞지 않아요.';return;}activateAccount(id);}
-async function resetPassword(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;if(id===DEVELOPER_ID){message.textContent='개발자 계정 비밀번호는 변경할 수 없어요.';return;}const accounts=loadAccounts();if(!accounts[id]){message.textContent='저장된 계정을 찾을 수 없어요.';return;}if(!window.confirm(`${id} 계정의 비밀번호를 새로 입력한 비밀번호로 바꿀까요?`))return;accounts[id].password=await hashPassword(password);accounts[id].passwordChangedAt=Date.now();localStorage.setItem(AUTH_ACCOUNTS_KEY,JSON.stringify(accounts));message.textContent='비밀번호를 변경했어요. 자동으로 로그인합니다.';message.className='success';activateAccount(id);}
-function activateAccount(id){activeUser=id;localStorage.setItem(AUTH_SESSION_KEY,id);progress=loadProgress();selectedStage=Math.min(progress.highestStage,STAGES.length-1);game=null;setAuthView();renderMeta();requestAnimationFrame(()=>{resizeCanvas();draw();});}
-function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;game=null;cancelAnimationFrame(animationId);activeUser='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());setAuthView();}
+async function apiRequest(path,options={}){const headers={'Content-Type':'application/json',...(options.headers||{})};if(authToken)headers.Authorization=`Bearer ${authToken}`;const response=await fetch(path,{...options,headers});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'서버에 연결할 수 없습니다.');return data;}
+function localProgressFor(id){try{return JSON.parse(localStorage.getItem(`${SAVE_KEY}:${id}`)||localStorage.getItem(SAVE_KEY)||'null');}catch{return null;}}
+async function signupAccount(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;message.textContent='서버에 계정을 만드는 중...';try{const data=await apiRequest('/api/signup',{method:'POST',body:JSON.stringify({id,password,progress:localProgressFor(id)})});message.textContent='회원가입 완료! 진행 상황이 서버에 저장됩니다.';message.className='success';activateAccount(data.id,data.token,data.progress);}catch(error){message.textContent=error.message;}}
+async function loginAccount(event){event.preventDefault();const {id,password,message}=authValues();if(!validAccount(id,password,message))return;message.textContent='로그인 중...';try{const data=await apiRequest('/api/login',{method:'POST',body:JSON.stringify({id,password})});activateAccount(data.id,data.token,data.progress);}catch(error){const legacy=loadAccounts()[id],legacyHash=legacy?await hashPassword(password):'';if(legacy&&legacy.password===legacyHash){try{const migrated=await apiRequest('/api/signup',{method:'POST',body:JSON.stringify({id,password,progress:localProgressFor(id)})});activateAccount(migrated.id,migrated.token,migrated.progress);return;}catch{}}message.textContent=error.message;}}
+async function resetPassword(){const {message}=authValues();message.className='';message.textContent='서버 계정 비밀번호 변경은 관리자에게 문의해 주세요.';}
+function activateAccount(id,token,serverProgress){activeUser=id;authToken=token||authToken;localStorage.setItem(AUTH_SESSION_KEY,authToken);progress=id===DEVELOPER_ID?developerProgress():loadProgress(serverProgress);selectedStage=Math.min(progress.highestStage,STAGES.length-1);game=null;setAuthView();renderMeta();requestAnimationFrame(()=>{resizeCanvas();draw();});}
+async function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;try{await apiRequest('/api/logout',{method:'POST'});}catch{}game=null;cancelAnimationFrame(animationId);activeUser='';authToken='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());progress=loadProgress();setAuthView();}
+async function restoreSession(){if(!authToken)return;try{const data=await apiRequest('/api/session');activateAccount(data.id,authToken,data.progress);}catch{authToken='';localStorage.removeItem(AUTH_SESSION_KEY);setAuthView();}}
 function setBgmTrack(videoId){if(bgmTrack===videoId)return;bgmTrack=videoId;const mute=soundOn?0:1;$('#bgm-player').src=`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${mute}&loop=1&playlist=${videoId}&controls=0&start=1&enablejsapi=1`;}
 function syncSoundButtons(){const icon=soundOn?'🔊':'🔇';$('#sound-button').textContent=icon;$('#sound-button').ariaLabel=soundOn?'소리 끄기':'소리 켜기';$('#auth-sound-button').textContent=`${icon} BGM`;$('#auth-sound-button').ariaLabel=soundOn?'배경음악 끄기':'배경음악 켜기';}
 function playerCommand(player,command){player?.contentWindow?.postMessage(JSON.stringify({event:'command',func:command,args:[]}), '*');}
@@ -198,12 +198,13 @@ function playGachaSound(){const player=$('#gacha-sound-player'),mute=soundOn?0:1
 function stopGachaSound(){$('#gacha-sound-player').removeAttribute('src');}
 function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';setBgmTrack(loggedIn?'xM911Syufvg':'HdTkXL6BTSM');syncSoundButtons();if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
 
-function loadProgress(){
+function loadProgress(serverProgress=null){
   if(isDeveloperAccount())return developerProgress();
   const fallback={gold:0,highestStage:0,cleared:[],owned:[...BASIC_UNITS],loadout:[...BASIC_UNITS],levels:{runner:1,tank:1,fighter:1,mage:1},redeemedCodes:[]};
-  try{const saved=JSON.parse(localStorage.getItem(progressKey()));if(!saved)return fallback;const owned=[...new Set([...BASIC_UNITS,...(saved.owned||[])])],loadout=(saved.loadout||BASIC_UNITS).filter(type=>owned.includes(type)).slice(0,4);while(loadout.length<4){const next=BASIC_UNITS.find(type=>!loadout.includes(type));loadout.push(next);}return {...fallback,...saved,owned,loadout,levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
+  try{const saved=serverProgress||JSON.parse(localStorage.getItem(progressKey()));if(!saved)return fallback;const owned=[...new Set([...BASIC_UNITS,...(saved.owned||[])])],loadout=(saved.loadout||BASIC_UNITS).filter(type=>owned.includes(type)).slice(0,4);while(loadout.length<4){const next=BASIC_UNITS.find(type=>!loadout.includes(type));loadout.push(next);}return {...fallback,...saved,owned,loadout,levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
 }
-function saveProgress(){if(!isDeveloperAccount())localStorage.setItem(progressKey(),JSON.stringify(progress));renderMeta();}
+let saveTimer;
+function saveProgress(){if(!isDeveloperAccount()){localStorage.setItem(progressKey(),JSON.stringify(progress));clearTimeout(saveTimer);saveTimer=setTimeout(()=>apiRequest('/api/progress',{method:'PUT',body:JSON.stringify({progress})}).catch(error=>console.error('Server save failed:',error.message)),150);}renderMeta();}
 function renderMeta(){
   $('#gold').textContent=isDeveloperAccount()?'∞':progress.gold.toLocaleString();
   $('#stage-picker').innerHTML=STAGES.map((s,i)=>`<button class="stage-button ${i===selectedStage?'selected':''}" data-stage="${i}" ${i>progress.highestStage?'disabled':''}>${i+1}${progress.cleared.includes(i)?' ✓':''}</button>`).join('');
@@ -454,4 +455,4 @@ function playTone(freq,duration=.1,type='square',volume=.06,delay=0){if(!soundOn
 function playHit(volume){playTone(90,.07,'sawtooth',volume);}
 function playJingle(notes,gap=.11){notes.forEach((n,i)=>playTone(n,.18,'triangle',.09,i*gap));}
 
-setAuthView();renderMeta();resizeCanvas();draw();
+setAuthView();renderMeta();resizeCanvas();draw();restoreSession();
