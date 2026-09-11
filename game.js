@@ -122,7 +122,7 @@ const AUTH_REPAIR_KEY = 'cat-fortress-account-repair-v2';
 const DEVELOPER_ID = 'doonyoon';
 const DEVELOPER_PASSWORD = 'kk45537606';
 const API_BASE = location.hostname.endsWith('github.io') ? 'https://goyangi-seongchaejeon.onrender.com' : '';
-const LOGIN_BGM_ID='HdTkXL6BTSM',LOBBY_BGM_ID='xM911Syufvg',FINAL_STAGE_BGM_ID='DF3phzb0Sio';
+const LOGIN_BGM_ID='HdTkXL6BTSM',LOBBY_BGM_ID='xM911Syufvg',STAGE_ONE_BGM_ID='bnTiOKWAyQM',FINAL_STAGE_BGM_ID='DF3phzb0Sio';
 repairDuplicatedAccountSaves();
 let authToken=localStorage.getItem(AUTH_SESSION_KEY)||'',activeUser='';
 let progress = loadProgress();
@@ -263,7 +263,7 @@ function redeemCoupon(event){
 }
 
 function startBattle() {
-  initAudio();setBgmTrack(selectedStage===STAGES.length-1?FINAL_STAGE_BGM_ID:LOBBY_BGM_ID);resizeCanvas();game=createGame(); $('#stage-label').textContent=`STAGE ${selectedStage+1}`; $('#start-overlay').classList.add('hidden'); $('#battle-message').classList.add('hidden'); $('#exit-battle').classList.remove('hidden'); $('#training-panel').classList.remove('hidden'); renderTraining(); lastTime=performance.now(); cancelAnimationFrame(animationId); animationId=requestAnimationFrame(loop); playJingle([392,523,659]);
+  initAudio();setBgmTrack(selectedStage===0?STAGE_ONE_BGM_ID:selectedStage===STAGES.length-1?FINAL_STAGE_BGM_ID:LOBBY_BGM_ID);resizeCanvas();game=createGame(); $('#stage-label').textContent=`STAGE ${selectedStage+1}`; $('#start-overlay').classList.add('hidden'); $('#battle-message').classList.add('hidden'); $('#exit-battle').classList.remove('hidden'); $('#training-panel').classList.remove('hidden'); renderTraining(); lastTime=performance.now(); cancelAnimationFrame(animationId); animationId=requestAnimationFrame(loop); playJingle([392,523,659]);
 }
 function exitBattle(){
   if(!game?.running)return;
