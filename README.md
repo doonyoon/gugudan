@@ -25,6 +25,7 @@ python -m http.server 8000
 - 전용 뽑기 효과음의 “뽕!” 타이밍에 맞춘 캡슐 개봉 연출
 - 최종 20스테이지 전용 BGM과 로비 복귀 시 음악 자동 전환
 - 1스테이지 전용 BGM
+- 전장에 동시에 출격 가능한 고양이 최대 30마리 제한
 - PostgreSQL 서버 계정과 골드·스테이지·캐릭터·레벨·편성 진행 상황 동기화
 - 무료 Supabase PostgreSQL 연결: Render 환경 변수 `DATABASE_URL`에 Supabase Transaction pooler 주소 사용
 - `game.js`: Canvas 전투, 유닛, 적, 자원, 사운드 시스템
