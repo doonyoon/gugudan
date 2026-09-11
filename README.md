@@ -23,6 +23,7 @@ python -m http.server 8000
 - 모바일 세로 화면 차단과 가로 화면 전용 전투 레이아웃
 - 로그인·로비별 영상은 숨기고 반복 재생하는 전용 BGM과 음소거 버튼
 - 전용 뽑기 효과음의 “뽕!” 타이밍에 맞춘 캡슐 개봉 연출
+- 최종 20스테이지 전용 BGM과 로비 복귀 시 음악 자동 전환
 - PostgreSQL 서버 계정과 골드·스테이지·캐릭터·레벨·편성 진행 상황 동기화
 - 무료 Supabase PostgreSQL 연결: Render 환경 변수 `DATABASE_URL`에 Supabase Transaction pooler 주소 사용
 - `game.js`: Canvas 전투, 유닛, 적, 자원, 사운드 시스템
