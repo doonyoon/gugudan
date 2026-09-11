@@ -120,6 +120,7 @@ const AUTH_ACCOUNTS_KEY = 'cat-fortress-accounts-v1';
 const AUTH_SESSION_KEY = 'cat-fortress-session-v1';
 const AUTH_REPAIR_KEY = 'cat-fortress-account-repair-v2';
 const DEVELOPER_ID = 'doonyoon';
+const API_BASE = location.hostname.endsWith('github.io') ? 'https://goyangi-seongchaejeon.onrender.com' : '';
 repairDuplicatedAccountSaves();
 let authToken=localStorage.getItem(AUTH_SESSION_KEY)||'',activeUser='';
 let progress = loadProgress();
@@ -182,7 +183,7 @@ function developerProgress(){const owned=Object.keys(UNIT_TYPES);return {gold:Nu
 async function hashPassword(password){const data=new TextEncoder().encode(password);const hash=await crypto.subtle.digest('SHA-256',data);return [...new Uint8Array(hash)].map(value=>value.toString(16).padStart(2,'0')).join('');}
 function authValues(){return {id:$('#auth-id').value.trim(),password:$('#auth-password').value,message:$('#auth-message')};}
 function validAccount(id,password,message){message.className='';if(!/^[A-Za-z0-9가-힣_]{3,16}$/.test(id)){message.textContent='아이디는 3~16자의 한글, 영문, 숫자, 밑줄만 사용할 수 있어요.';return false;}if(password.length<4){message.textContent='비밀번호는 4자 이상 입력하세요.';return false;}return true;}
-async function apiRequest(path,options={}){const headers={'Content-Type':'application/json',...(options.headers||{})};if(authToken)headers.Authorization=`Bearer ${authToken}`;const response=await fetch(path,{...options,headers});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'서버에 연결할 수 없습니다.');return data;}
+async function apiRequest(path,options={}){const headers={'Content-Type':'application/json',...(options.headers||{})};if(authToken)headers.Authorization=`Bearer ${authToken}`;const response=await fetch(`${API_BASE}${path}`,{...options,headers});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'서버에 연결할 수 없습니다.');return data;}
 function localProgressFor(id){try{return JSON.parse(localStorage.getItem(`${SAVE_KEY}:${id}`)||localStorage.getItem(SAVE_KEY)||'null');}catch{return null;}}
 async function signupAccount(){const {id,password,message}=authValues();if(!validAccount(id,password,message))return;message.textContent='서버에 계정을 만드는 중...';try{const data=await apiRequest('/api/signup',{method:'POST',body:JSON.stringify({id,password,progress:localProgressFor(id)})});message.textContent='회원가입 완료! 진행 상황이 서버에 저장됩니다.';message.className='success';activateAccount(data.id,data.token,data.progress);}catch(error){message.textContent=error.message;}}
 async function loginAccount(event){event.preventDefault();const {id,password,message}=authValues();if(!validAccount(id,password,message))return;message.textContent='로그인 중...';try{const data=await apiRequest('/api/login',{method:'POST',body:JSON.stringify({id,password})});activateAccount(data.id,data.token,data.progress);}catch(error){const legacy=loadAccounts()[id],legacyHash=legacy?await hashPassword(password):'';if(legacy&&legacy.password===legacyHash){try{const migrated=await apiRequest('/api/signup',{method:'POST',body:JSON.stringify({id,password,progress:localProgressFor(id)})});activateAccount(migrated.id,migrated.token,migrated.progress);return;}catch{}}message.textContent=error.message;}}
