@@ -122,7 +122,7 @@ const AUTH_REPAIR_KEY = 'cat-fortress-account-repair-v2';
 const DEVELOPER_ID = 'doonyoon';
 const DEVELOPER_PASSWORD = 'kk45537606';
 const API_BASE = location.hostname.endsWith('github.io') ? 'https://goyangi-seongchaejeon.onrender.com' : '';
-const LOGIN_BGM_ID='HdTkXL6BTSM',LOBBY_BGM_ID='xM911Syufvg',STAGE_ONE_BGM_ID='bnTiOKWAyQM',FINAL_STAGE_BGM_ID='DF3phzb0Sio';
+const LOGIN_BGM_ID='HdTkXL6BTSM',LOBBY_BGM_ID='xM911Syufvg',STAGE_ONE_BGM_ID='bnTiOKWAyQM',FINAL_STAGE_BGM_ID='SWaedl4U67g';
 repairDuplicatedAccountSaves();
 let authToken=localStorage.getItem(AUTH_SESSION_KEY)||'',activeUser='';
 let progress = loadProgress();
