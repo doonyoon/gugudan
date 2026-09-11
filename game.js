@@ -37,51 +37,56 @@ const UNIT_TYPES = {
   ,chronos: { cost: 1550, hp: 1550, damage: 520, speed: 26, range: 280, cooldown: 24, rate: 2, color: '#9ee8e3', label: '시간신냥', icon: '⌛', desc: '시간을 초월한 포격', rarity: '레전드 레어', ranged: true }
 };
 const ENEMY_TYPES = {
-  pup: { hp: 95, damage: 13, speed: 34, range: 34, rate: .8, reward: 28, color: '#d9a66f' },
-  boar: { hp: 340, damage: 34, speed: 22, range: 40, rate: 1.2, reward: 80, color: '#9c6970' },
-  bird: { hp: 145, damage: 24, speed: 48, range: 58, rate: .9, reward: 48, color: '#93b7d4' },
-  snake: { hp: 230, damage: 30, speed: 42, range: 72, rate: .72, reward: 62, color: '#82b56c' },
-  gorilla: { hp: 620, damage: 68, speed: 27, range: 48, rate: 1.05, reward: 125, color: '#695c58' },
-  rhino: { hp: 1200, damage: 115, speed: 18, range: 55, rate: 1.35, reward: 210, color: '#87939b' },
-  ghost: { hp: 760, damage: 92, speed: 38, range: 120, rate: 1.15, reward: 175, color: '#b69ad4', ranged: true },
-  mech: { hp: 1800, damage: 155, speed: 20, range: 95, rate: 1.25, reward: 300, color: '#65758d' },
-  demon: { hp: 3100, damage: 260, speed: 16, range: 145, rate: 1.55, reward: 520, color: '#672f58', ranged: true },
-  wolf: { hp: 520, damage: 58, speed: 62, range: 42, rate: .72, reward: 105, color: '#65708b' },
-  crab: { hp: 1450, damage: 105, speed: 14, range: 48, rate: 1.4, reward: 245, color: '#d95b53' },
-  bat: { hp: 680, damage: 88, speed: 54, range: 105, rate: 1.05, reward: 155, color: '#514272', ranged: true },
-  golem: { hp: 2400, damage: 185, speed: 12, range: 62, rate: 1.6, reward: 390, color: '#8d765f' },
-  sorcerer: { hp: 1250, damage: 145, speed: 24, range: 175, rate: 1.4, reward: 280, color: '#4853a0', ranged: true },
-  overlord: { hp: 5200, damage: 210, speed: 11, range: 135, rate: 1.5, reward: 1800, color: '#381448', ranged: true, boss: true, label:'마왕' },
-  godOverlord: { hp: 8500, damage: 280, speed: 9, range: 165, rate: 1.4, reward: 3000, color: '#151b5c', ranged: true, boss: true, label:'신왕 제로스' }
+  pup: { hp: 95, damage: 13, speed: 34, range: 34, rate: .8, reward: 28, color: '#d9a66f', label:'들개' },
+  boar: { hp: 340, damage: 34, speed: 22, range: 40, rate: 1.2, reward: 80, color: '#9c6970', label:'멧돼지' },
+  bird: { hp: 145, damage: 24, speed: 48, range: 58, rate: .9, reward: 48, color: '#93b7d4', label:'전투새' },
+  snake: { hp: 230, damage: 30, speed: 42, range: 72, rate: .72, reward: 62, color: '#82b56c', label:'독사' },
+  gorilla: { hp: 620, damage: 68, speed: 27, range: 48, rate: 1.05, reward: 125, color: '#695c58', label:'광포 고릴라' },
+  rhino: { hp: 1200, damage: 115, speed: 18, range: 55, rate: 1.35, reward: 210, color: '#87939b', label:'철갑 코뿔소' },
+  ghost: { hp: 760, damage: 92, speed: 38, range: 120, rate: 1.15, reward: 175, color: '#b69ad4', ranged: true, label:'원혼' },
+  mech: { hp: 1800, damage: 155, speed: 20, range: 95, rate: 1.25, reward: 300, color: '#65758d', label:'전투 기계' },
+  demon: { hp: 3100, damage: 260, speed: 16, range: 145, rate: 1.55, reward: 520, color: '#672f58', ranged: true, label:'심연 악마' },
+  wolf: { hp: 520, damage: 58, speed: 62, range: 42, rate: .72, reward: 105, color: '#65708b', label:'그림자 늑대' },
+  crab: { hp: 1450, damage: 105, speed: 14, range: 48, rate: 1.4, reward: 245, color: '#d95b53', label:'용암 집게' },
+  bat: { hp: 680, damage: 88, speed: 54, range: 105, rate: 1.05, reward: 155, color: '#514272', ranged: true, label:'밤의 박쥐' },
+  golem: { hp: 2400, damage: 185, speed: 12, range: 62, rate: 1.6, reward: 390, color: '#8d765f', label:'고대 골렘' },
+  sorcerer: { hp: 1250, damage: 145, speed: 24, range: 175, rate: 1.4, reward: 280, color: '#4853a0', ranged: true, label:'어둠 술사' },
+  hyena: { hp: 800, damage: 90, speed: 68, range: 42, rate: .58, reward: 190, color: '#9a754d', label:'광폭 하이에나' },
+  guardian: { hp: 3600, damage: 190, speed: 10, range: 55, rate: 1.5, reward: 600, color: '#546477', armor:20, label:'철갑 수호병' },
+  cannon: { hp: 1700, damage: 260, speed: 12, range: 230, rate: 2.1, reward: 520, color: '#725952', ranged: true, label:'공성 포병' },
+  reaper: { hp: 2800, damage: 300, speed: 32, range: 150, rate: 1.18, reward: 750, color: '#342340', ranged: true, label:'심연의 사신' },
+  leviathan: { hp: 6000, damage: 420, speed: 8, range: 80, rate: 1.7, reward: 1200, color: '#274f5b', armor:35, label:'공허의 거수' },
+  overlord: { hp: 12000, damage: 440, speed: 13, range: 175, rate: 1.25, reward: 3000, color: '#381448', armor:55, rageDamage:1.35, rageSpeed:1.3, ranged: true, boss: true, label:'마왕 아르카돈' },
+  godOverlord: { hp: 30000, damage: 800, speed: 11, range: 220, rate: 1.05, reward: 6000, color: '#151b5c', armor:115, rageDamage:1.55, rageSpeed:1.45, ranged: true, boss: true, label:'신왕 제로스' }
 };
 const BOSS_STAGES = {9:'overlord',19:'godOverlord'};
 const ENEMY_STAGE_POOLS = [
   ['pup'],['pup','bird'],['pup','bird','snake'],['bird','snake','boar'],['snake','boar','gorilla'],
   ['snake','boar','gorilla'],['boar','gorilla','ghost'],['gorilla','rhino','ghost'],['rhino','ghost','mech'],['rhino','ghost','demon'],
-  ['wolf','gorilla','mech'],['wolf','bat','mech'],['crab','wolf','demon'],['crab','bat','golem'],['wolf','sorcerer','demon'],
-  ['crab','golem','demon'],['wolf','bat','golem'],['crab','sorcerer','demon'],['golem','bat','demon'],['crab','sorcerer','golem']
+  ['wolf','hyena','mech','guardian'],['wolf','bat','hyena','cannon'],['crab','hyena','demon','guardian'],['crab','bat','cannon','golem'],['wolf','sorcerer','cannon','reaper'],
+  ['crab','golem','demon','guardian'],['hyena','bat','golem','reaper'],['crab','sorcerer','reaper','leviathan'],['golem','cannon','reaper','leviathan'],['guardian','reaper','cannon','leviathan']
 ];
 const STAGES = [
   { name:'햇살 초원', enemyHp:1000, spawn:4.4, scale:.5, reward:100 },
-  { name:'바람 언덕', enemyHp:1300, spawn:4.1, scale:.58, reward:140 },
-  { name:'붉은 협곡', enemyHp:1650, spawn:3.8, scale:.66, reward:190 },
-  { name:'달빛 늪지', enemyHp:2050, spawn:3.55, scale:.74, reward:250 },
-  { name:'강철 도시', enemyHp:2500, spawn:3.3, scale:.82, reward:320 },
-  { name:'얼음 성벽', enemyHp:2800, spawn:3.2, scale:.86, reward:410 },
-  { name:'화염 분지', enemyHp:3300, spawn:3.05, scale:.94, reward:510 },
-  { name:'폭풍 요새', enemyHp:3900, spawn:2.9, scale:1.02, reward:630 },
-  { name:'황혼 왕국', enemyHp:4600, spawn:2.75, scale:1.1, reward:780 },
-  { name:'별의 최후', enemyHp:5200, spawn:2.8, scale:1.12, reward:1000 },
-  { name:'수정 동굴', enemyHp:5800, spawn:2.75, scale:1.18, reward:1200 },
-  { name:'독안개 숲', enemyHp:6500, spawn:2.7, scale:1.24, reward:1420 },
-  { name:'황금 사막', enemyHp:7200, spawn:2.65, scale:1.3, reward:1660 },
-  { name:'심해 왕국', enemyHp:8000, spawn:2.6, scale:1.36, reward:1920 },
-  { name:'천공 신전', enemyHp:8900, spawn:2.55, scale:1.42, reward:2200 },
-  { name:'망각의 폐허', enemyHp:9800, spawn:2.5, scale:1.48, reward:2500 },
-  { name:'오로라 설원', enemyHp:10800, spawn:2.65, scale:1.42, reward:2820 },
-  { name:'태양의 용광로', enemyHp:11900, spawn:2.6, scale:1.48, reward:3160 },
-  { name:'차원의 균열', enemyHp:13100, spawn:2.55, scale:1.54, reward:3520 },
-  { name:'신들의 성채', enemyHp:14000, spawn:2.5, scale:1.6, reward:4000 }
+  { name:'바람 언덕', enemyHp:1400, spawn:4.0, scale:.62, reward:140 },
+  { name:'붉은 협곡', enemyHp:1850, spawn:3.7, scale:.72, reward:190 },
+  { name:'달빛 늪지', enemyHp:2350, spawn:3.4, scale:.82, reward:250 },
+  { name:'강철 도시', enemyHp:3000, spawn:3.15, scale:.95, reward:320 },
+  { name:'얼음 성벽', enemyHp:3800, spawn:3.0, scale:1.08, reward:410 },
+  { name:'화염 분지', enemyHp:4700, spawn:2.85, scale:1.2, reward:510 },
+  { name:'폭풍 요새', enemyHp:5800, spawn:2.7, scale:1.34, reward:630 },
+  { name:'황혼 왕국', enemyHp:7000, spawn:2.55, scale:1.48, reward:780 },
+  { name:'별의 최후', enemyHp:8500, spawn:2.4, scale:1.55, reward:1000 },
+  { name:'수정 동굴', enemyHp:10000, spawn:2.3, scale:1.65, reward:1200 },
+  { name:'독안개 숲', enemyHp:12000, spawn:2.2, scale:1.75, reward:1420 },
+  { name:'황금 사막', enemyHp:14500, spawn:2.1, scale:1.85, reward:1660 },
+  { name:'심해 왕국', enemyHp:17000, spawn:2.0, scale:1.95, reward:1920 },
+  { name:'천공 신전', enemyHp:20000, spawn:1.95, scale:2.05, reward:2200 },
+  { name:'망각의 폐허', enemyHp:23500, spawn:1.9, scale:2.15, reward:2500 },
+  { name:'오로라 설원', enemyHp:27000, spawn:1.85, scale:2.25, reward:2820 },
+  { name:'태양의 용광로', enemyHp:31000, spawn:1.8, scale:2.35, reward:3160 },
+  { name:'차원의 균열', enemyHp:35500, spawn:1.75, scale:2.4, reward:3520 },
+  { name:'신들의 성채', enemyHp:42000, spawn:1.7, scale:2.45, reward:4000 }
 ];
 const STAGE_THEMES = [
   { sky1:'#72c9f4',sky2:'#dff6d5',ground:'#63a34f',hill:'#4f873f',accent:'#fff2a8',kind:'sun' },
@@ -138,7 +143,7 @@ function createGame() {
   const settings = STAGES[selectedStage];
   const money=300+selectedStage*50,maxMoney=1300+selectedStage*110,income=55+selectedStage*4,playerHp=3600+selectedStage*250;
   const bossType=BOSS_STAGES[selectedStage]||null;
-  return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, bossType, bossName:bossType?ENEMY_TYPES[bossType].label:'', bossSpawned:false, bossDefeated:!bossType, bossWarning:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), shake:0, result:null };
+  return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, bossType, bossName:bossType?ENEMY_TYPES[bossType].label:'', bossSpawned:false, bossDefeated:!bossType, bossWarning:0, bossRageWarning:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), shake:0, result:null };
 }
 
 function resizeCanvas() {
@@ -275,7 +280,7 @@ function loop(now) {
   const dt=Math.min((now-lastTime)/1000,.04); lastTime=now; if(game?.running) update(dt); draw(); updateUI(); if(game?.running) animationId=requestAnimationFrame(loop);
 }
 function update(dt) {
-  game.time+=dt;game.bossWarning=Math.max(0,game.bossWarning-dt); game.money=Math.min(game.maxMoney,game.money+game.income*dt); game.enemyTimer-=dt;
+  game.time+=dt;game.bossWarning=Math.max(0,game.bossWarning-dt);game.bossRageWarning=Math.max(0,game.bossRageWarning-dt); game.money=Math.min(game.maxMoney,game.money+game.income*dt); game.enemyTimer-=dt;
   Object.keys(game.cooldowns).forEach(k=>game.cooldowns[k]=Math.max(0,game.cooldowns[k]-dt));
   if(game.enemyTimer<=0){ spawnEnemy(); game.enemyTimer=game.enemySpawn*(.88+Math.random()*.34)*Math.max(.78,1-game.time/600); }
   updateArmy(game.units,game.enemies,1,dt); updateArmy(game.enemies,game.units,-1,dt);
@@ -289,9 +294,13 @@ function updateArmy(army,opponents,direction,dt) {
   army.forEach(unit=>{
     unit.attack-=dt; unit.hit=Math.max(0,(unit.hit||0)-dt);unit.actionTime=Math.max(0,(unit.actionTime||0)-dt); const target=findTarget(unit,opponents,direction);
     if(unit.healer){updateHealer(unit,army,direction,dt);return;}
+    const raging=unit.boss&&unit.hp<=unit.maxHp*.5;
+    if(raging&&!unit.rageTriggered){unit.rageTriggered=true;game.bossRageWarning=2.8;game.shake=12;playJingle([110,98,82,73],.18);}
+    const attackRate=raging?unit.rate/(unit.rageSpeed||1):unit.rate;
+    const attackDamage=Math.round(unit.damage*(raging?(unit.rageDamage||1):1));
     const baseX=direction===1?width-70:70; const baseInRange=Math.abs(baseX-unit.x)<=unit.range;
     if(target||baseInRange){
-      if(unit.attack<=0){ unit.attack=unit.rate; unit.flash=.12;unit.actionTime=.55; if(target){ if(unit.ranged) shoot(unit,target); else damage(target,unit.damage,unit.x,unit.y); } else { if(direction===1){if(canDamageEnemyBase())game.enemyHp-=unit.damage;}else game.playerHp-=unit.damage; burst(baseX,unit.y,direction===1?'#ef476f':'#55d6be'); game.shake=3; playHit(.08); } }
+      if(unit.attack<=0){ unit.attack=attackRate; unit.flash=.12;unit.actionTime=.55; if(target){ if(unit.ranged) shoot(unit,target,attackDamage); else damage(target,attackDamage,unit.x,unit.y); } else { if(direction===1){if(canDamageEnemyBase())game.enemyHp-=attackDamage;}else game.playerHp-=attackDamage; burst(baseX,unit.y,direction===1?'#ef476f':'#55d6be'); game.shake=unit.boss?8:3; playHit(.08); } }
     } else unit.x+=unit.speed*direction*dt;
     unit.flash=Math.max(0,(unit.flash||0)-dt);
   });
@@ -314,7 +323,7 @@ function updateHealer(unit,army,direction,dt){
 }
 function healingBurst(x,y,amount){for(let i=0;i<8;i++)game.particles.push({x:x+(Math.random()-.5)*28,y:y-30-Math.random()*25,vx:(Math.random()-.5)*20,vy:-18-Math.random()*25,life:.55+Math.random()*.25,color:'#65f0b5'});playTone(660,.12,'sine',.045);setTimeout(()=>playTone(880,.16,'sine',.04),70);}
 function findTarget(unit,opponents,direction){ return opponents.filter(e=>direction===1?e.x>=unit.x:e.x<=unit.x).sort((a,b)=>Math.abs(a.x-unit.x)-Math.abs(b.x-unit.x)).find(e=>Math.abs(e.x-unit.x)<=unit.range); }
-function shoot(unit,target){ game.projectiles.push({x:unit.x,y:unit.y-35,speed:230,direction:target.x>=unit.x?1:-1,targetId:target.id,targetSide:target.side,damage:unit.damage,life:4,color:unit.side==='cat'?'#f7dcff':'#ff7b8d'}); playTone(unit.side==='cat'?700:180,.08,'sine',.04); }
+function shoot(unit,target,damageAmount=unit.damage){ game.projectiles.push({x:unit.x,y:unit.y-35,speed:230,direction:target.x>=unit.x?1:-1,targetId:target.id,targetSide:target.side,damage:damageAmount,life:4,color:unit.side==='cat'?'#f7dcff':'#ff7b8d'}); playTone(unit.side==='cat'?700:180,.08,'sine',.04); }
 function updateProjectiles(dt){
   const width=canvas.viewWidth||800;
   game.projectiles.forEach(projectile=>{
@@ -330,7 +339,7 @@ function updateProjectiles(dt){
     projectile.x+=dx/distance*step;projectile.y+=dy/distance*step;
   });
 }
-function damage(target,amount,x,y){ target.hp-=amount; target.hit=.12; burst(x,y,target.side==='cat'?'#fff0bd':'#ff9d76'); playHit(.035); }
+function damage(target,amount,x,y){const dealt=Math.max(1,Math.round(amount-(target.armor||0)));target.hp-=dealt;target.hit=.12;burst(x,y,target.side==='cat'?'#fff0bd':'#ff9d76');playHit(.035);}
 function canDamageEnemyBase(){return !game.bossType||game.bossDefeated;}
 function removeDead(){
   game.enemies=game.enemies.filter(e=>{if(e.hp>0)return true;if(e.boss){game.bossDefeated=true;game.bossWarning=2.5;playJingle([784,659,523,392],.12);}game.money=Math.min(game.maxMoney,game.money+e.reward);burst(e.x,e.y,e.boss?'#ff5ee5':'#ffd447',e.boss?35:10);return false;});
@@ -344,7 +353,7 @@ function spawnEnemy(){
   if(game.bossType&&game.spawnCount===10&&!game.bossSpawned){type=game.bossType;game.bossSpawned=true;game.bossWarning=3;playJingle([196,165,131,98],.16);}
   else if(selectedStage>=4&&game.spawnCount%10===0)type=pool[pool.length-1];
   const e=ENEMY_TYPES[type],waveBoost=1+Math.min(.2,game.time/360);
-  game.enemies.push({...e,id:crypto.randomUUID(),side:'enemy',kind:type,x:(canvas.viewWidth||800)-82,y:groundY(),attack:.4,hp:Math.round(e.hp*game.enemyScale*waveBoost),maxHp:Math.round(e.hp*game.enemyScale*waveBoost),damage:Math.round(e.damage*game.enemyScale*waveBoost)});
+  game.enemies.push({...e,id:crypto.randomUUID(),side:'enemy',kind:type,x:(canvas.viewWidth||800)-82,y:groundY(),attack:.4,hp:Math.round(e.hp*game.enemyScale*waveBoost),maxHp:Math.round(e.hp*game.enemyScale*waveBoost),damage:Math.round(e.damage*game.enemyScale*waveBoost),rageTriggered:false});
 }
 function upgradeWorker(){ if(!game?.running||game.workerLevel>=8)return;const cost=workerCost();if(game.money<cost)return;game.money-=cost;game.workerLevel++;game.income+=18;game.maxMoney+=300;playJingle([523,659]); }
 function workerCost(){return 120+(game?.workerLevel||1)*70;}
@@ -366,7 +375,7 @@ function finish(win){
 }
 function groundY(){return (canvas.viewHeight||400)*.77;}
 
-function draw(){ const w=canvas.viewWidth||800,h=canvas.viewHeight||400;ctx.clearRect(0,0,w,h);ctx.save();if(game?.shake)ctx.translate((Math.random()-.5)*game.shake,(Math.random()-.5)*game.shake);drawBackground(w,h);drawBase(55,groundY(),true,game?.playerHp??2500);drawBase(w-55,groundY(),false,game?.enemyHp??2500);if(game){game.units.forEach(drawUnit);game.enemies.forEach(drawEnemy);game.projectiles.forEach(drawProjectile);game.particles.forEach(drawParticle);if(game.bossWarning>0){ctx.fillStyle=game.bossDefeated?'#ffe56e':'#ff64db';ctx.font=`${Math.min(34,w/18)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(game.bossDefeated?`${game.bossName} 격파!`:`${game.bossName} 강림!`,w/2,70);}}ctx.restore(); }
+function draw(){ const w=canvas.viewWidth||800,h=canvas.viewHeight||400;ctx.clearRect(0,0,w,h);ctx.save();if(game?.shake)ctx.translate((Math.random()-.5)*game.shake,(Math.random()-.5)*game.shake);drawBackground(w,h);drawBase(55,groundY(),true,game?.playerHp??2500);drawBase(w-55,groundY(),false,game?.enemyHp??2500);if(game){game.units.forEach(drawUnit);game.enemies.forEach(drawEnemy);game.projectiles.forEach(drawProjectile);game.particles.forEach(drawParticle);if(game.bossRageWarning>0){ctx.fillStyle='#ff394f';ctx.font=`${Math.min(38,w/16)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(`${game.bossName} 광폭화!`,w/2,70);}else if(game.bossWarning>0){ctx.fillStyle=game.bossDefeated?'#ffe56e':'#ff64db';ctx.font=`${Math.min(34,w/18)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(game.bossDefeated?`${game.bossName} 격파!`:`${game.bossName} 강림!`,w/2,70);}}ctx.restore(); }
 function drawBackground(w,h){
   const theme=STAGE_THEMES[selectedStage]||STAGE_THEMES[0],ground=groundY();
   const sky=ctx.createLinearGradient(0,0,0,ground);sky.addColorStop(0,theme.sky1);sky.addColorStop(1,theme.sky2);ctx.fillStyle=sky;ctx.fillRect(0,0,w,ground);
@@ -431,7 +440,7 @@ function drawUnitGear(type,size){
 }
 function drawEnemy(e){
   ctx.save();ctx.translate(e.x,e.y);if(e.hit)ctx.globalAlpha=.5;ctx.fillStyle=e.color;ctx.strokeStyle='#2b1b27';ctx.lineWidth=3;
-  const sizes={boar:28,gorilla:30,rhino:33,mech:31,demon:35,wolf:25,crab:32,bat:24,golem:38,sorcerer:29,overlord:52,godOverlord:60},size=sizes[e.kind]||20;
+  const sizes={boar:28,gorilla:30,rhino:33,mech:31,demon:35,wolf:25,crab:32,bat:24,golem:38,sorcerer:29,hyena:27,guardian:40,cannon:34,reaper:38,leviathan:48,overlord:58,godOverlord:68},size=sizes[e.kind]||20;
   if(e.kind==='snake'){ctx.lineWidth=14;ctx.strokeStyle=e.color;ctx.beginPath();ctx.moveTo(-28,-5);ctx.bezierCurveTo(-18,-42,5,-3,22,-35);ctx.stroke();ctx.fillStyle='#222';ctx.beginPath();ctx.arc(18,-40,3,0,7);ctx.fill();}
   else if(e.kind==='bird'){ctx.beginPath();ctx.arc(0,-24,size,0,7);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-12,-27);ctx.lineTo(-40,-43);ctx.lineTo(-25,-13);ctx.fill();ctx.stroke();}
   else if(e.kind==='ghost'){ctx.globalAlpha*=.7;ctx.beginPath();ctx.arc(0,-35,size+7,Math.PI,0);ctx.lineTo(size+7,-4);ctx.lineTo(18,-12);ctx.lineTo(8,-4);ctx.lineTo(-4,-12);ctx.lineTo(-16,-4);ctx.lineTo(-size-7,-12);ctx.closePath();ctx.fill();ctx.stroke();}
@@ -443,7 +452,12 @@ function drawEnemy(e){
   if(e.kind==='bat'){ctx.fillStyle='#332747';ctx.beginPath();ctx.moveTo(-18,-35);ctx.lineTo(-55,-65);ctx.lineTo(-45,-22);ctx.lineTo(-20,-10);ctx.moveTo(18,-35);ctx.lineTo(55,-65);ctx.lineTo(45,-22);ctx.lineTo(20,-10);ctx.fill();}
   if(e.kind==='golem'){ctx.strokeStyle='#5f4c3b';ctx.lineWidth=7;ctx.strokeRect(-30,-72,60,62);ctx.beginPath();ctx.moveTo(-28,-50);ctx.lineTo(20,-25);ctx.moveTo(5,-67);ctx.lineTo(-12,-18);ctx.stroke();}
   if(e.kind==='sorcerer'){ctx.fillStyle='#242b70';ctx.beginPath();ctx.moveTo(-34,-47);ctx.lineTo(0,-92);ctx.lineTo(35,-47);ctx.fill();ctx.fillStyle='#84e8ff';ctx.beginPath();ctx.arc(31,-62,8,0,7);ctx.fill();}
-  if(e.boss){ctx.fillStyle=e.kind==='godOverlord'?'#80eaff':'#ffd447';ctx.beginPath();ctx.moveTo(-28,-88);ctx.lineTo(-20,-120);ctx.lineTo(-5,-96);ctx.lineTo(9,-124);ctx.lineTo(27,-91);ctx.closePath();ctx.fill();ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(e.kind==='godOverlord'?'FINAL GOD BOSS':'STAGE BOSS',0,-140);ctx.fillStyle='#16091d';ctx.fillRect(-60,8,120,10);ctx.fillStyle=e.kind==='godOverlord'?'#55e8ff':'#ff3fcf';ctx.fillRect(-60,8,120*Math.max(0,e.hp/e.maxHp),10);}
+  if(e.kind==='hyena'){ctx.fillStyle='#4a3428';ctx.beginPath();ctx.arc(-12,-36,4,0,7);ctx.arc(9,-21,4,0,7);ctx.arc(17,-45,3,0,7);ctx.fill();ctx.fillStyle=e.color;ctx.beginPath();ctx.moveTo(-22,-48);ctx.lineTo(-17,-78);ctx.lineTo(-3,-52);ctx.fill();}
+  if(e.kind==='guardian'){ctx.fillStyle='#9eb4c9';ctx.fillRect(-35,-75,70,20);ctx.strokeRect(-35,-75,70,20);ctx.fillStyle='#314050';ctx.fillRect(-52,-55,25,55);ctx.strokeRect(-52,-55,25,55);}
+  if(e.kind==='cannon'){ctx.fillStyle='#302b2a';ctx.beginPath();ctx.arc(-22,-3,13,0,7);ctx.arc(22,-3,13,0,7);ctx.fill();ctx.fillStyle='#525b62';ctx.fillRect(-48,-55,70,18);ctx.fillRect(-67,-51,30,10);}
+  if(e.kind==='reaper'){ctx.fillStyle='#17121d';ctx.beginPath();ctx.moveTo(-38,-65);ctx.lineTo(0,-100);ctx.lineTo(38,-65);ctx.lineTo(27,0);ctx.lineTo(-27,0);ctx.closePath();ctx.fill();ctx.strokeStyle='#c8d5dc';ctx.lineWidth=4;ctx.beginPath();ctx.arc(-43,-67,28,-1.4,1.2);ctx.moveTo(-18,-87);ctx.lineTo(-48,-5);ctx.stroke();}
+  if(e.kind==='leviathan'){ctx.strokeStyle='#18323a';ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(-35,-25);ctx.bezierCurveTo(-65,-5,-60,8,-75,12);ctx.moveTo(35,-25);ctx.bezierCurveTo(65,-5,60,8,75,12);ctx.stroke();ctx.fillStyle='#8ee9e0';ctx.beginPath();ctx.moveTo(-34,-72);ctx.lineTo(-15,-110);ctx.lineTo(-5,-75);ctx.moveTo(34,-72);ctx.lineTo(15,-110);ctx.lineTo(5,-75);ctx.fill();}
+  if(e.boss){if(e.hp<=e.maxHp*.5){ctx.strokeStyle='#ff334d';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,-size,size+12,0,7);ctx.stroke();}ctx.fillStyle=e.kind==='godOverlord'?'#80eaff':'#ffd447';ctx.beginPath();ctx.moveTo(-28,-96);ctx.lineTo(-20,-130);ctx.lineTo(-5,-104);ctx.lineTo(9,-134);ctx.lineTo(27,-99);ctx.closePath();ctx.fill();ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(`${e.label} · 방어 ${e.armor}`,0,-150);ctx.fillStyle='#16091d';ctx.fillRect(-70,8,140,12);ctx.fillStyle=e.kind==='godOverlord'?'#55e8ff':'#ff3fcf';ctx.fillRect(-70,8,140*Math.max(0,e.hp/e.maxHp),12);}
   else healthMini(e);ctx.restore();
 }
 function healthMini(u){if(u.hp>=u.maxHp)return;ctx.fillStyle='#141525';ctx.fillRect(-22,4,44,5);ctx.fillStyle=u.side==='cat'?'#55d6be':'#ef476f';ctx.fillRect(-22,4,44*Math.max(0,u.hp/u.maxHp),5);}
