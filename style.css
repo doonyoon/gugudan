@@ -29,6 +29,7 @@ h1 { margin:1px 0 0; font:clamp(1.7rem,4vw,2.5rem)/1 "Black Han Sans",sans-serif
 .top-actions { display:flex; align-items:center; gap:8px; }
 .gold-display { min-width:82px; height:42px; display:flex; align-items:center; justify-content:center; gap:5px; padding:0 10px; border:2px solid #66572c; border-radius:14px; background:#292415; color:var(--yellow); }
 .gacha-icon { background:linear-gradient(145deg,#6d3c87,#392551); }
+.suggestion-icon { background:linear-gradient(145deg,#3d5e86,#24344e); }
 .lineup-icon { width:54px; background:linear-gradient(145deg,#315f73,#213646); font-size:.72rem; }
 .icon-button { width:46px; height:46px; border:2px solid #596081; border-radius:14px; background:#22263e; color:#fff; font-weight:900; cursor:pointer; box-shadow:0 4px 0 #080a12; }
 .icon-button:active { transform:translateY(3px); box-shadow:0 1px 0 #080a12; }
@@ -150,6 +151,17 @@ dialog li { margin:10px 0; line-height:1.6; }
 .slot-card small,.roster-card small { color:#aeb5d2; font-size:.62rem; }
 .roster { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; }
 .roster-card.equipped { border-color:#55d6be; background:#29463f; }
+.suggestion-dialog { width:min(650px,calc(100% - 28px)); max-height:88svh; overflow-y:auto; }
+.suggestion-dialog>p { color:#c4c9df; }
+.suggestion-form textarea,.suggestion-reply textarea { width:100%; min-height:104px; resize:vertical; padding:10px; border:2px solid #596081; border-radius:10px; background:#111426; color:#fff; font:inherit; }
+.suggestion-form .main-button { min-width:0; width:100%; margin-top:8px; padding:10px; font-size:1rem; }
+.suggestion-form small { display:block; min-height:20px; margin-top:5px; color:#ff8da4; }.suggestion-form small.success { color:#63e1bd; }
+.suggestion-list { display:grid; gap:9px; margin-top:14px; }
+.suggestion-item { padding:11px; border:1px solid #535b80; border-radius:10px; background:#14172a; }
+.suggestion-item header { display:flex; justify-content:space-between; gap:8px; color:#aeb5d2; font-size:.72rem; }.suggestion-item header strong { color:var(--yellow); }
+.suggestion-item p { margin:8px 0; white-space:pre-wrap; line-height:1.5; }
+.suggestion-answer { padding:8px; border-left:3px solid var(--mint); border-radius:5px; background:#172d31; color:#d9fff7; font-size:.9rem; white-space:pre-wrap; }
+.suggestion-reply { margin-top:8px; }.suggestion-reply textarea { min-height:62px; }.suggestion-reply button { margin-top:5px; padding:6px 10px; border:0; border-radius:7px; background:var(--yellow); color:#17192a; font-weight:700; cursor:pointer; }
 @keyframes shake-capsule { 25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)} }
 @keyframes power-shake { 0%{transform:translate(-6px,2px) rotate(-7deg)}50%{transform:translate(7px,-2px) rotate(7deg)}100%{transform:translate(-4px,-1px) rotate(-5deg)} }
 @keyframes capsule-glow { to{box-shadow:0 0 45px 16px rgba(255,226,84,.8)} }

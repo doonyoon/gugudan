@@ -32,6 +32,24 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,200,{saved:true});const {progress}=await readJson(request);return json(response,await store.saveProgress(id,sanitizeProgress(progress))?200:404,{saved:true});
     }
     if(request.method==='POST'&&pathname==='/api/logout')return json(response,200,{ok:true});
+    if(request.method==='POST'&&pathname==='/api/suggestions'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      const {content}=await readJson(request),text=typeof content==='string'?content.trim():'';
+      if(text.length<2||text.length>500)return json(response,400,{error:'건의 내용은 2~500자로 입력해 주세요.'});
+      return json(response,201,{suggestion:await store.createSuggestion(id,text)});
+    }
+    if(request.method==='GET'&&pathname==='/api/suggestions'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      return json(response,200,{suggestions:await store.listSuggestions(id,id===developerId)});
+    }
+    const replyMatch=pathname.match(/^\/api\/suggestions\/(\d+)\/reply$/);
+    if(request.method==='PUT'&&replyMatch){
+      const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 답변할 수 있습니다.'});
+      const {response:answer}=await readJson(request),text=typeof answer==='string'?answer.trim():'';
+      if(text.length<1||text.length>1000)return json(response,400,{error:'답변은 1~1000자로 입력해 주세요.'});
+      const suggestion=await store.replySuggestion(replyMatch[1],text);if(!suggestion)return json(response,404,{error:'건의를 찾을 수 없습니다.'});
+      return json(response,200,{suggestion});
+    }
     return json(response,404,{error:'API를 찾을 수 없습니다.'});
   }catch(error){console.error(error);return json(response,error.code==='23505'?409:500,{error:error.code==='23505'?'이미 사용 중인 아이디입니다.':'서버 저장 중 오류가 발생했습니다.'});}
 }

@@ -164,6 +164,9 @@ $('#close-help').addEventListener('click', () => $('#help-dialog').close());
 $('#sound-button').addEventListener('click', toggleSound);
 $('#auth-sound-button').addEventListener('click', toggleSound);
 $('#gacha-button').addEventListener('click', openGacha);
+$('#suggestion-button').addEventListener('click', openSuggestions);
+$('#close-suggestion').addEventListener('click', () => $('#suggestion-dialog').close());
+$('#suggestion-form').addEventListener('submit', submitSuggestion);
 $('#close-gacha').addEventListener('click', () => { stopGachaSound();$('#gacha-dialog').close(); });
 $('#draw-button').addEventListener('click', drawGacha);
 $('#draw-ten-button').addEventListener('click', drawTenGacha);
@@ -206,6 +209,26 @@ function toggleSound(){soundOn=!soundOn;syncSoundButtons();const command=soundOn
 function playGachaSound(){const player=$('#gacha-sound-player'),mute=soundOn?0:1;player.removeAttribute('src');requestAnimationFrame(()=>{player.src=`https://www.youtube.com/embed/${GACHA_SOUND_ID}?autoplay=1&mute=${mute}&controls=0&start=1&enablejsapi=1`;});}
 function stopGachaSound(){$('#gacha-sound-player').removeAttribute('src');}
 function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';setBgmTrack(loggedIn?LOBBY_BGM_ID:LOGIN_BGM_ID);syncSoundButtons();if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
+
+function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
+function displayDate(value){const date=new Date(value);return Number.isNaN(date.getTime())?'':date.toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+async function openSuggestions(){
+  const developer=isDeveloperAccount();
+  $('#suggestion-title').textContent=developer?'개발자 건의함':'건의함';
+  $('#suggestion-description').textContent=developer?'모든 회원의 건의를 확인하고 답변할 수 있습니다.':'게임에 추가했으면 하는 점이나 버그를 알려주세요.';
+  $('#suggestion-form').classList.toggle('hidden',developer);
+  $('#suggestion-message').textContent='';$('#suggestion-content').value='';
+  $('#suggestion-list').innerHTML='<p>불러오는 중...</p>';$('#suggestion-dialog').showModal();
+  try{const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],developer);}catch(error){$('#suggestion-list').innerHTML=`<p>건의함을 불러오지 못했습니다: ${escapeHtml(error.message)}</p>`;}
+}
+function renderSuggestions(items,developer){
+  const list=$('#suggestion-list');
+  if(!items.length){list.innerHTML='<p>아직 등록된 건의가 없습니다.</p>';return;}
+  list.innerHTML=items.map(item=>`<article class="suggestion-item"><header><strong>${developer?escapeHtml(item.user_id):'내 건의'}</strong><span>${displayDate(item.created_at)}</span></header><p>${escapeHtml(item.content)}</p>${item.response?`<div class="suggestion-answer"><b>개발자 답변</b><br>${escapeHtml(item.response)}</div>`:developer?`<form class="suggestion-reply" data-suggestion-id="${item.id}"><textarea maxlength="1000" placeholder="답변을 작성하세요" required></textarea><button type="submit">답변 등록</button></form>`:'<small>답변을 기다리고 있습니다.</small>'}</article>`).join('');
+  if(developer)list.querySelectorAll('.suggestion-reply').forEach(form=>form.addEventListener('submit',replySuggestion));
+}
+async function submitSuggestion(event){event.preventDefault();const content=$('#suggestion-content').value.trim(),message=$('#suggestion-message');message.className='';if(content.length<2){message.textContent='내용을 2자 이상 입력해 주세요.';return;}message.textContent='보내는 중...';try{await apiRequest('/api/suggestions',{method:'POST',body:JSON.stringify({content})});message.textContent='건의가 전달되었습니다. 답변이 등록되면 여기에서 확인할 수 있어요.';message.className='success';$('#suggestion-content').value='';const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],false);}catch(error){message.textContent=error.message;}}
+async function replySuggestion(event){event.preventDefault();const form=event.currentTarget,textarea=form.querySelector('textarea'),response=textarea.value.trim();if(!response)return;const button=form.querySelector('button');button.disabled=true;try{await apiRequest(`/api/suggestions/${form.dataset.suggestionId}/reply`,{method:'PUT',body:JSON.stringify({response})});const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],true);}catch(error){button.disabled=false;window.alert(error.message);}}
 
 function loadProgress(serverProgress=null){
   if(isDeveloperAccount())return developerProgress();

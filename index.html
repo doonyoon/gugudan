@@ -56,6 +56,7 @@
         <div class="gold-display" title="보유 골드"><span>🪙</span><strong id="gold">0</strong></div>
         <button id="lineup-button" class="icon-button lineup-icon" type="button" aria-label="출전 슬롯 편성">편성</button>
         <button id="gacha-button" class="icon-button gacha-icon" type="button" aria-label="캐릭터 뽑기">🎁</button>
+        <button id="suggestion-button" class="icon-button suggestion-icon" type="button" aria-label="건의함">💬</button>
         <button id="sound-button" class="icon-button" type="button" aria-label="소리 켜기">🔇</button>
         <button id="help-button" class="icon-button" type="button" aria-label="도움말">?</button>
       </div>
@@ -154,8 +155,19 @@
     <h3>보유 캐릭터</h3>
     <div class="roster" id="roster"></div>
   </dialog>
+  <dialog id="suggestion-dialog" class="suggestion-dialog">
+    <button class="dialog-close" id="close-suggestion" type="button" aria-label="닫기">×</button>
+    <h2 id="suggestion-title">건의함</h2>
+    <p id="suggestion-description">게임에 추가했으면 하는 점이나 버그를 알려주세요.</p>
+    <form id="suggestion-form" class="suggestion-form">
+      <textarea id="suggestion-content" maxlength="500" placeholder="건의 내용을 적어 주세요. (최대 500자)" required></textarea>
+      <button class="main-button" type="submit">건의 보내기</button>
+      <small id="suggestion-message" role="status"></small>
+    </form>
+    <div id="suggestion-list" class="suggestion-list"></div>
+  </dialog>
   <iframe id="bgm-player" class="bgm-player" title="게임 배경음악" allow="autoplay"></iframe>
   <iframe id="gacha-sound-player" class="bgm-player" title="뽑기 효과음" allow="autoplay"></iframe>
-  <script src="game.js?v=20260911-bossraid1"></script>
+  <script src="game.js?v=20260922-suggestions1"></script>
 </body>
 </html>
