@@ -12,16 +12,7 @@ function sanitizeProgress(value){const source=value&&typeof value==='object'?val
 async function createStore(){
   if(process.env.DATABASE_URL){
     const {Pool}=require('pg');
-    const connectionUrl=new URL(process.env.DATABASE_URL);
-    // Supabase Direct connections are IPv6-only for this project. Render's
-    // free web service needs the IPv4-capable Shared pooler instead.
-    const directMatch=connectionUrl.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);
-    if(directMatch){
-      connectionUrl.hostname='aws-0-ap-south-1.pooler.supabase.com';
-      connectionUrl.port='5432';
-      connectionUrl.username=`postgres.${directMatch[1]}`;
-    }
-    const pool=new Pool({connectionString:connectionUrl.toString(),ssl:process.env.NODE_ENV==='production'?{rejectUnauthorized:false}:undefined});
+    const pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.NODE_ENV==='production'?{rejectUnauthorized:false}:undefined});
     await pool.query(`CREATE TABLE IF NOT EXISTS accounts (id VARCHAR(16) PRIMARY KEY,password_hash TEXT NOT NULL,salt TEXT NOT NULL,progress JSONB NOT NULL DEFAULT '{}'::jsonb,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS suggestions (id BIGSERIAL PRIMARY KEY,user_id VARCHAR(16) NOT NULL,content VARCHAR(500) NOT NULL,response VARCHAR(1000),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),responded_at TIMESTAMPTZ)`);
     return {
