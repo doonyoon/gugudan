@@ -32,6 +32,11 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,200,{saved:true});const {progress}=await readJson(request);return json(response,await store.saveProgress(id,sanitizeProgress(progress))?200:404,{saved:true});
     }
     if(request.method==='POST'&&pathname==='/api/logout')return json(response,200,{ok:true});
+    if(request.method==='GET'&&pathname==='/api/admin/accounts'){
+      const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 회원 목록을 볼 수 있습니다.'});
+      const accounts=await store.listAccounts();
+      return json(response,200,{accounts:accounts.map(account=>({id:account.id,gold:Number(account.progress?.gold||0),highestStage:Number(account.progress?.highestStage||0),createdAt:account.created_at,updatedAt:account.updated_at||account.created_at}))});
+    }
     if(request.method==='POST'&&pathname==='/api/suggestions'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       const {content}=await readJson(request),text=typeof content==='string'?content.trim():'';
