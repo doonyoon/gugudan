@@ -32,6 +32,21 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,200,{saved:true});const {progress}=await readJson(request);return json(response,await store.saveProgress(id,sanitizeProgress(progress))?200:404,{saved:true});
     }
     if(request.method==='POST'&&pathname==='/api/logout')return json(response,200,{ok:true});
+    if(request.method==='POST'&&pathname==='/api/password-reset/request'){
+      const {id}=await readJson(request);if(typeof id==='string'&&validId(id))await store.requestPasswordReset(id);
+      return json(response,200,{message:'계정이 존재하면 개발자 확인 요청이 전달됩니다.'});
+    }
+    if(request.method==='POST'&&pathname==='/api/password-reset/confirm'){
+      const {id,ticket,password}=await readJson(request);if(!validId(id)||typeof ticket!=='string'||!/^\d{6}$/.test(ticket)||typeof password!=='string'||password.length<4||password.length>128)return json(response,400,{error:'입력값을 다시 확인해 주세요.'});
+      const salt=crypto.randomBytes(16).toString('hex');await store.completePasswordReset(id,crypto.createHash('sha256').update(ticket).digest('hex'),await passwordHash(password,salt),salt);return json(response,200,{ok:true});
+    }
+    if(request.method==='GET'&&pathname==='/api/admin/password-resets'){
+      const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 요청을 확인할 수 있습니다.'});return json(response,200,{requests:await store.listPasswordResets()});
+    }
+    const resetApproval=pathname.match(/^\/api\/admin\/password-resets\/(\d+)\/approve$/);
+    if(request.method==='POST'&&resetApproval){
+      const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 승인할 수 있습니다.'});const ticket=String(crypto.randomInt(0,1000000)).padStart(6,'0'),expires=new Date(Date.now()+30*60*1000).toISOString(),approved=await store.approvePasswordReset(resetApproval[1],crypto.createHash('sha256').update(ticket).digest('hex'),expires);if(!approved)return json(response,404,{error:'대기 중인 요청을 찾을 수 없습니다.'});return json(response,200,{userId:approved.user_id,ticket,expiresAt:expires});
+    }
     if(request.method==='GET'&&pathname==='/api/admin/accounts'){
       const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 회원 목록을 볼 수 있습니다.'});
       const accounts=await store.listAccounts();
