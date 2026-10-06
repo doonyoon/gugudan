@@ -30,6 +30,7 @@ h1 { margin:1px 0 0; font:clamp(1.7rem,4vw,2.5rem)/1 "Black Han Sans",sans-serif
 .gold-display { min-width:82px; height:42px; display:flex; align-items:center; justify-content:center; gap:5px; padding:0 10px; border:2px solid #66572c; border-radius:14px; background:#292415; color:var(--yellow); }
 .gacha-icon { background:linear-gradient(145deg,#6d3c87,#392551); }
 .suggestion-icon { background:linear-gradient(145deg,#3d5e86,#24344e); }
+.admin-icon { background:linear-gradient(145deg,#75541e,#3d2b12); }
 .lineup-icon { width:54px; background:linear-gradient(145deg,#315f73,#213646); font-size:.72rem; }
 .icon-button { width:46px; height:46px; border:2px solid #596081; border-radius:14px; background:#22263e; color:#fff; font-weight:900; cursor:pointer; box-shadow:0 4px 0 #080a12; }
 .icon-button:active { transform:translateY(3px); box-shadow:0 1px 0 #080a12; }
@@ -95,7 +96,8 @@ select { padding:9px 12px; border:2px solid #6c7397; border-radius:10px; backgro
 .unit-card small { color:#aeb5d2; font-size:.67rem; }
 .unit-card em { margin-top:3px; color:var(--yellow); font-size:.78rem; font-style:normal; font-weight:700; }
 .unit-portrait { display:block; width:38px; height:38px; margin:0 auto 2px; border:2px solid #101323; border-radius:50%; background:#fff0bd; color:#17192a; font-size:1.5rem; font-weight:900; line-height:34px; }
-.unit-portrait.sprite { background-color:#dce3f0; background-size:400% 200%; background-position:0 0; background-repeat:no-repeat; }
+.unit-portrait.sprite { background-color:#dce3f0; display:grid; place-items:center; overflow:hidden; }
+.unit-portrait.sprite > svg { display:block; width:100%; height:100%; }
 .slot-card .unit-portrait,.roster-card .unit-portrait { width:48px; height:48px; margin:3px auto; line-height:44px; }
 .unit-portrait.tank { background:#c8e7ff; }.unit-portrait.fighter { background:#ffc3a7; }.unit-portrait.mage { background:#e3c8ff; }
 .unit-portrait.ninja { background:#c8c5df; }.unit-portrait.dragon { background:#b7efcb; }.unit-portrait.gunner { background:#ffe69a; }.unit-portrait.titan { background:#ffb0b0; }
@@ -112,17 +114,57 @@ dialog li { margin:10px 0; line-height:1.6; }
 .gacha-dialog { max-height:88svh; overflow-y:auto; text-align:center; }
 .gacha-dialog h2 { margin-bottom:4px; }
 .gacha-dialog p { color:#c4c9df; }
-.gacha-stage { position:relative; width:220px; height:170px; display:grid; place-items:center; margin:5px auto; overflow:hidden; }
+.gacha-stage { --prize-color:#ffe27a; position:relative; width:100%; height:270px; display:grid; place-items:center; margin:12px auto; overflow:hidden; isolation:isolate; border:1px solid #98639d; border-radius:14px; background:radial-gradient(ellipse at 50% 110%,#e487f0 0,#844b9b 28%,#301839 64%,#1b102a 100%); }
 .gacha-rays { position:absolute; width:190px; height:190px; opacity:0; background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.8) 0 8deg,transparent 8deg 18deg); border-radius:50%; }
-.capsule { position:relative; z-index:2; width:110px; height:110px; display:grid; place-items:center; border:5px solid #b88620; border-radius:50%; background:radial-gradient(circle at 35% 30%,#fff6b5,#ffd447 45%,#c57622); font-size:3.3rem; box-shadow:0 0 30px rgba(255,212,71,.38); }
-.capsule::after { content:""; position:absolute; left:-4px; right:-4px; top:47px; height:9px; border:3px solid #8d5b18; background:#fff2a3; }
-.capsule span { position:relative; z-index:1; }
-.capsule.drawing { animation:power-shake .1s linear infinite, capsule-glow .45s ease-in-out infinite alternate; }
+.capsule { position:relative; z-index:2; width:112px; height:112px; filter:drop-shadow(0 12px 8px #160c23aa); }
+.capsule-half { position:absolute; top:0; width:56px; height:112px; border:3px solid #614016; background:radial-gradient(ellipse at 30% 20%,#fffed0 0,#ffdf52 38%,#e6a51a 65%,#975014 100%); }
+.capsule-half.left { left:0; border-radius:60px 0 0 60px; border-right:1px solid #e5b636; }
+.capsule-half.right { right:0; border-radius:0 60px 60px 0; border-left:1px solid #ffef98; background:radial-gradient(ellipse at 0% 20%,#fff59b 0,#f3bf31 40%,#b26918 85%); }
+.capsule-face { position:absolute; inset:0; display:grid; place-items:center; font-size:1.65rem; font-weight:900; color:#302014; }
+.capsule-face::before { content:""; position:absolute; top:40px; left:32px; width:8px; height:11px; border-radius:50%; background:#302014; box-shadow:33px 0 #302014; }
+.capsule-face::after { content:""; position:absolute; top:56px; left:50px; width:10px; height:8px; background:#302014; clip-path:polygon(0 0,100% 0,50% 100%); }
+.capsule-face i { position:absolute; top:62px; left:42px; width:27px; height:15px; border:3px solid #302014; border-top:0; border-radius:0 0 50% 50%; }
+.capsule.drawing { animation:gacha-wobble .19s ease-in-out infinite alternate; }
 .gacha-stage.revealing .gacha-rays { opacity:1; animation:ray-spin 1.2s linear infinite; }
 .gacha-stage.revealing .capsule { animation:capsule-pop .75s ease forwards; }
-.gacha-stage.legend { filter:drop-shadow(0 0 18px #ffdf59); }
-.gacha-stage.ultra { filter:drop-shadow(0 0 18px #68d9ff); }
-.gacha-stage.super { filter:drop-shadow(0 0 16px #c987ff); }
+.gacha-stage.legend { --prize-color:#ffdd59; }
+.gacha-stage.ultra { --prize-color:#ff9be4; }
+.gacha-stage.super { --prize-color:#c987ff; }
+.gacha-claw { position:absolute; top:0; left:calc(50% - 9px); width:18px; height:81px; background:repeating-linear-gradient(0deg,#d4d0df 0 8px,#524559 8px 12px); border:3px solid #231d2c; transform-origin:top; z-index:3; }
+.gacha-claw::after { content:""; position:absolute; bottom:-12px; left:-12px; width:36px; height:24px; border:6px solid #d8d4e0; border-top:8px solid #62596e; border-bottom:0; border-radius:7px 7px 0 0; }
+.gacha-stage.charging .gacha-claw { animation:gacha-claw-shake .19s ease-in-out infinite alternate; }
+.gacha-lightning { position:absolute; left:4%; right:4%; top:43%; height:54px; opacity:0; background:#c3bbff; clip-path:polygon(0 46%,12% 35%,17% 62%,25% 10%,33% 64%,42% 27%,51% 55%,61% 6%,69% 62%,79% 28%,88% 54%,100% 37%,100% 46%,88% 64%,79% 39%,69% 80%,61% 25%,51% 70%,42% 42%,33% 82%,25% 31%,17% 78%,12% 48%,0 56%); }
+.charging .gacha-lightning { animation:gacha-electric .16s steps(2,end) .85s infinite; }
+.gacha-core { position:absolute; width:32px; height:32px; background:white; border-radius:50%; box-shadow:0 0 30px 12px white,0 0 70px 24px #dca6ff; opacity:0; z-index:1; }
+.opening .gacha-core { animation:gacha-core-burst 1.4s ease-out forwards; }
+.opening .capsule-half.left { animation:gacha-open-left .8s ease-out forwards; }
+.opening .capsule-half.right { animation:gacha-open-right .8s ease-out forwards; }
+.opening .capsule-face { opacity:0; transition:opacity .12s; }
+.opening .gacha-claw { transform:translateY(-110%); transition:transform .6s ease-in; }
+.gacha-flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:5; }
+.opening .gacha-flash { animation:gacha-whiteout 1.35s ease-in-out forwards; }
+.opening .gacha-rays { opacity:.6; width:360px; height:360px; animation:ray-spin 9s linear infinite; }
+.gacha-prize { position:absolute; top:85px; opacity:0; z-index:3; filter:drop-shadow(0 0 18px var(--prize-color)); }
+.gacha-prize .unit-portrait { width:116px; height:116px; margin:0; font-size:4rem; line-height:112px; }
+.gacha-prize .unit-portrait.sprite { width:160px; height:165px; border:0; border-radius:0; background:transparent; }
+.revealed .gacha-prize { animation:gacha-prize-in .7s cubic-bezier(.16,1,.3,1) forwards; }
+.gacha-rarity { position:absolute; top:22px; left:8px; right:8px; z-index:6; opacity:0; font-family:"Malgun Gothic",sans-serif; font-size:clamp(1.45rem,5vw,2.25rem); font-weight:1000; line-height:1.25; color:#ffe26a; -webkit-text-stroke:.5px #66320b; text-shadow:2px 3px 0 #471229,0 0 16px var(--prize-color); }
+.revealed .gacha-rarity { animation:gacha-title-in .65s cubic-bezier(.16,1,.3,1) forwards; }
+.settled .gacha-rays { opacity:.3; }
+.gacha-volume { display:flex; align-items:center; justify-content:center; gap:10px; margin:12px 0; font-size:.8rem; color:#ddd4e9; }
+.gacha-volume input { width:120px; accent-color:#ffda63; }
+.gacha-volume button { padding:5px 7px; border:1px solid #756385; border-radius:6px; background:#302039; cursor:pointer; }
+.gacha-volume output { width:36px; text-align:right; font-variant-numeric:tabular-nums; }
+@keyframes gacha-wobble { from{transform:translateX(-4px) rotate(-7deg)}to{transform:translateX(4px) rotate(7deg)} }
+@keyframes gacha-claw-shake { from{transform:rotate(-2deg)}to{transform:rotate(2deg)} }
+@keyframes gacha-electric { 0%{opacity:.2;transform:scaleY(.7)}100%{opacity:.95;transform:scaleY(1.2)} }
+@keyframes gacha-open-left { to{transform:translate(-82px,12px) rotate(-30deg);opacity:0} }
+@keyframes gacha-open-right { to{transform:translate(82px,12px) rotate(30deg);opacity:0} }
+@keyframes gacha-core-burst { 0%{opacity:0;transform:scale(.3)}25%{opacity:1}65%{opacity:1;transform:scale(4)}100%{opacity:0;transform:scale(7)} }
+@keyframes gacha-whiteout { 0%{opacity:0}30%,48%{opacity:.96}100%{opacity:0} }
+@keyframes gacha-prize-in { from{opacity:0;transform:translateY(28px) scale(.3)}to{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes gacha-title-in { from{opacity:0;transform:scale(2.3)}65%{opacity:1;transform:scale(.95)}to{opacity:1;transform:scale(1)} }
+@media (prefers-reduced-motion:reduce) { .gacha-stage *, .gacha-stage *::after { animation-duration:.01ms!important; animation-delay:0s!important; animation-iteration-count:1!important; transition:none!important; }.gacha-stage .gacha-flash,.gacha-stage .gacha-lightning,.gacha-stage .gacha-core { display:none; } }
 .confetti { position:absolute; inset:0; z-index:4; pointer-events:none; }
 .confetti i { position:absolute; left:50%; top:50%; width:7px; height:14px; border-radius:2px; background:var(--color); animation:confetti-burst .9s ease-out forwards; transform:rotate(var(--rotate)); }
 .gacha-result { min-height:48px; margin:10px 0; font-weight:700; color:var(--yellow); }
@@ -133,7 +175,7 @@ dialog li { margin:10px 0; line-height:1.6; }
 .ten-draw-button { background:linear-gradient(135deg,#ffd447,#ff8c42); }
 .golden-draw-button { grid-column:1/-1; color:#4a2800; background:linear-gradient(135deg,#fff3a1,#ffbf20 48%,#ff7a00); box-shadow:0 6px 0 #9a4d00,0 0 20px rgba(255,202,45,.35); }
 .golden-rate-note { margin:7px 0!important; color:#ffe568!important; font-size:.75rem; font-weight:700; }
-.gacha-stage.golden { filter:drop-shadow(0 0 22px #ffc928); }.gacha-stage.golden .capsule { background:radial-gradient(circle at 35% 25%,#fff,#ffe568 40%,#f28b00); box-shadow:0 0 40px #ffca32; }
+.gacha-stage.golden { border-color:#ffc928; }.gacha-stage.golden .capsule { filter:drop-shadow(0 0 20px #ffca32); }
 .rate-table { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:14px; }
 .rate-table span { padding:5px 3px; border-radius:7px; background:#111426; color:#bbc1db; font-size:.66rem; }
 .rate-table b { color:var(--yellow); }
@@ -162,6 +204,9 @@ dialog li { margin:10px 0; line-height:1.6; }
 .suggestion-item p { margin:8px 0; white-space:pre-wrap; line-height:1.5; }
 .suggestion-answer { padding:8px; border-left:3px solid var(--mint); border-radius:5px; background:#172d31; color:#d9fff7; font-size:.9rem; white-space:pre-wrap; }
 .suggestion-reply { margin-top:8px; }.suggestion-reply textarea { min-height:62px; }.suggestion-reply button { margin-top:5px; padding:6px 10px; border:0; border-radius:7px; background:var(--yellow); color:#17192a; font-weight:700; cursor:pointer; }
+.admin-dialog { width:min(720px,calc(100% - 28px)); max-height:88svh; overflow-y:auto; }.admin-dialog>p { color:#c4c9df; }
+.admin-account-list { display:grid; gap:7px; }.admin-account { display:grid; grid-template-columns:minmax(90px,1fr) 80px 100px 112px; gap:8px; align-items:center; padding:9px; border:1px solid #535b80; border-radius:9px; background:#14172a; font-size:.78rem; }.admin-account strong { color:var(--yellow); }.admin-account span { color:#c9cee3; text-align:right; }.admin-account small { color:#9199bc; text-align:right; }
+@media (max-width:540px) { .admin-account { grid-template-columns:1fr 1fr; }.admin-account span,.admin-account small { text-align:left; } }
 @keyframes shake-capsule { 25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)} }
 @keyframes power-shake { 0%{transform:translate(-6px,2px) rotate(-7deg)}50%{transform:translate(7px,-2px) rotate(7deg)}100%{transform:translate(-4px,-1px) rotate(-5deg)} }
 @keyframes capsule-glow { to{box-shadow:0 0 45px 16px rgba(255,226,84,.8)} }

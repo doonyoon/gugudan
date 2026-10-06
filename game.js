@@ -11,6 +11,10 @@ const CHARACTER_SPRITES = {
 const spriteImages = Object.fromEntries(Object.entries(CHARACTER_SPRITES).map(([type,file]) => {
   const image = new Image(); image.src = `assets/characters/${file}`; return [type,image];
 }));
+const ENEMY_SPRITES = {pup:'pup.png',boar:'boar.png',bird:'bird.png',snake:'snake.png',gorilla:'gorilla.png',rhino:'rhino.png',ghost:'ghost.png',mech:'mech.png',demon:'demon.png',wolf:'wolf.png'};
+const enemyImages = Object.fromEntries(Object.entries(ENEMY_SPRITES).map(([type,file]) => {
+  const image = new Image(); image.src = `assets/enemies/${file}`; return [type,image];
+}));
 
 const UNIT_TYPES = {
   runner: { cost: 50, hp: 80, damage: 14, speed: 58, range: 34, cooldown: 1.2, rate: .65, color: '#fff0bd', label: '날쌘냥', rarity:'기본' },
@@ -136,7 +140,9 @@ let selectedStage = Math.min(progress.highestStage, STAGES.length-1);
 let selectedLineupSlot = 0;
 
 let game = null, animationId = null, lastTime = 0, audio = null, soundOn = false, bgmTrack = '';
-const GACHA_SOUND_ID = '2VBLmiFQJ0Q', GACHA_POP_DELAY = 1500, GACHA_RESULT_DELAY = 2250;
+const GACHA_POP_DELAY = 2200, GACHA_REVEAL_DELAY = 3350, GACHA_RESULT_DELAY = 4600;
+let gachaBusy=false,gachaTimers=[],gachaSoundNodes=[],gachaGain=null,gachaStartedAt=0;
+let gachaVolume=.55;
 let unitButtons = [];
 
 function createGame() {
@@ -163,11 +169,21 @@ $('#help-button').addEventListener('click', () => $('#help-dialog').showModal())
 $('#close-help').addEventListener('click', () => $('#help-dialog').close());
 $('#sound-button').addEventListener('click', toggleSound);
 $('#auth-sound-button').addEventListener('click', toggleSound);
+$('#gacha-sound-toggle').addEventListener('click',toggleSound);
 $('#gacha-button').addEventListener('click', openGacha);
 $('#suggestion-button').addEventListener('click', openSuggestions);
 $('#close-suggestion').addEventListener('click', () => $('#suggestion-dialog').close());
 $('#suggestion-form').addEventListener('submit', submitSuggestion);
-$('#close-gacha').addEventListener('click', () => { stopGachaSound();$('#gacha-dialog').close(); });
+$('#admin-button').addEventListener('click', openAdmin);
+$('#close-admin').addEventListener('click', () => $('#admin-dialog').close());
+$('#close-gacha').addEventListener('click', () => $('#gacha-dialog').close());
+$('#gacha-dialog').addEventListener('close', resetGachaAnimation);
+$('#gacha-dialog').addEventListener('cancel', resetGachaAnimation);
+$('#gacha-volume').addEventListener('input',event=>{
+  gachaVolume=Number(event.target.value)/100;
+  $('#gacha-volume-value').textContent=`${event.target.value}%`;
+  if(gachaGain&&audio)gachaGain.gain.setTargetAtTime(soundOn?gachaVolume:0,audio.currentTime,.025);
+});
 $('#draw-button').addEventListener('click', drawGacha);
 $('#draw-ten-button').addEventListener('click', drawTenGacha);
 $('#golden-draw-button').addEventListener('click', drawGoldenGacha);
@@ -203,12 +219,32 @@ function activateAccount(id,token,serverProgress){activeUser=id;authToken=token|
 function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;if(authToken&&!authToken.startsWith('local:'))apiRequest('/api/logout',{method:'POST'}).catch(()=>{});game=null;cancelAnimationFrame(animationId);activeUser='';authToken='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());progress=loadProgress();setAuthView();}
 async function restoreSession(){if(!authToken)return;if(authToken.startsWith('local:')){const id=authToken.slice(6);if(id===DEVELOPER_ID||loadAccounts()[id]){activateAccount(id,authToken,localProgressFor(id));return;}}try{const data=await apiRequest('/api/session');activateAccount(data.id,authToken,data.progress);}catch{authToken='';localStorage.removeItem(AUTH_SESSION_KEY);setAuthView();}}
 function setBgmTrack(videoId){if(bgmTrack===videoId)return;bgmTrack=videoId;const mute=soundOn?0:1;$('#bgm-player').src=`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${mute}&loop=1&playlist=${videoId}&controls=0&start=1&enablejsapi=1`;}
-function syncSoundButtons(){const icon=soundOn?'🔊':'🔇';$('#sound-button').textContent=icon;$('#sound-button').ariaLabel=soundOn?'소리 끄기':'소리 켜기';$('#auth-sound-button').textContent=`${icon} BGM`;$('#auth-sound-button').ariaLabel=soundOn?'배경음악 끄기':'배경음악 켜기';}
+function syncSoundButtons(){const icon=soundOn?'🔊':'🔇';$('#sound-button').textContent=icon;$('#sound-button').ariaLabel=soundOn?'소리 끄기':'소리 켜기';$('#auth-sound-button').textContent=`${icon} BGM`;$('#auth-sound-button').ariaLabel=soundOn?'배경음악 끄기':'배경음악 켜기';$('#gacha-sound-toggle').textContent=icon;$('#gacha-sound-toggle').ariaLabel=soundOn?'소리 끄기':'소리 켜기';}
 function playerCommand(player,command){player?.contentWindow?.postMessage(JSON.stringify({event:'command',func:command,args:[]}), '*');}
-function toggleSound(){soundOn=!soundOn;syncSoundButtons();const command=soundOn?'unMute':'mute';playerCommand($('#bgm-player'),command);playerCommand($('#gacha-sound-player'),command);if(soundOn)initAudio();}
-function playGachaSound(){const player=$('#gacha-sound-player'),mute=soundOn?0:1;player.removeAttribute('src');requestAnimationFrame(()=>{player.src=`https://www.youtube.com/embed/${GACHA_SOUND_ID}?autoplay=1&mute=${mute}&controls=0&start=1&enablejsapi=1`;});}
-function stopGachaSound(){$('#gacha-sound-player').removeAttribute('src');}
-function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';setBgmTrack(loggedIn?LOBBY_BGM_ID:LOGIN_BGM_ID);syncSoundButtons();if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
+function toggleSound(){soundOn=!soundOn;syncSoundButtons();playerCommand($('#bgm-player'),soundOn?'unMute':'mute');if(soundOn){initAudio();if(gachaBusy&&!gachaGain)playGachaSound(Math.max(0,(performance.now()-gachaStartedAt)/1000));}if(gachaGain&&audio)gachaGain.gain.setTargetAtTime(soundOn?gachaVolume:0,audio.currentTime,.025);}
+// One local audio clock for the crank, electrical rise, opening impact and fanfare.
+function gachaNote(at,duration,from,to,type='sine',volume=.1){
+  if(!audio||!gachaGain)return;
+  const start=audio.currentTime+at,osc=audio.createOscillator(),gain=audio.createGain();
+  osc.type=type;osc.frequency.setValueAtTime(from,start);osc.frequency.exponentialRampToValueAtTime(Math.max(20,to),start+duration);
+  gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(volume,start+.008);gain.gain.exponentialRampToValueAtTime(.0001,start+duration);
+  osc.connect(gain).connect(gachaGain);osc.start(start);osc.stop(start+duration+.03);
+  const node={osc,gain};gachaSoundNodes.push(node);osc.onended=()=>{osc.disconnect();gain.disconnect();gachaSoundNodes=gachaSoundNodes.filter(item=>item!==node);};
+}
+function playGachaSound(elapsed=0){
+  stopGachaSound();initAudio();if(!audio||!soundOn)return;
+  gachaGain=audio.createGain();gachaGain.gain.value=gachaVolume;gachaGain.connect(audio.destination);
+  const note=(at,...args)=>{if(at>=elapsed)gachaNote(at-elapsed,...args);};
+  for(let i=0;i<23;i++){const at=i*.095;note(at,.06,130+i*8,65,'triangle',.14);if(i>9)note(at+.035,.045,900+i*48,360,'sawtooth',.025);}
+  note(.65,1.5,100,720,'sine',.07);note(1.2,.95,240,1400,'triangle',.045);
+  note(2.2,.5,180,35,'sine',.28);note(2.2,.32,1800,100,'triangle',.11);
+  [784,988,1175,1568].forEach((freq,i)=>note(2.3+i*.12,.5,freq,freq,'sine',.065));
+  [523.25,659.25,783.99,1046.5].forEach((freq,i)=>{note(3.35+i*.13,.65,freq,freq,'triangle',.1);note(3.35+i*.13,.55,freq*2,freq*2,'sine',.035);});
+  [523.25,659.25,783.99].forEach(freq=>note(3.95,.6,freq,freq,'triangle',.065));
+}
+function stopGachaSound(){for(const {osc,gain} of gachaSoundNodes){osc.onended=null;try{osc.stop();}catch{}osc.disconnect();gain.disconnect();}gachaSoundNodes=[];if(gachaGain){gachaGain.disconnect();gachaGain=null;}}
+function resetGachaAnimation(){gachaTimers.forEach(clearTimeout);gachaTimers=[];gachaBusy=false;stopGachaSound();$('#capsule').classList.remove('drawing');$('#gacha-stage').className='gacha-stage';$('#gacha-prize').innerHTML='';$('#gacha-rarity').textContent='';$('#confetti').innerHTML='';setGachaButtons();}
+function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').classList.toggle('hidden',loggedIn);document.querySelector('.app').classList.toggle('auth-locked',!loggedIn);$('#account-name').textContent=loggedIn?`${activeUser}님`:'';$('#admin-button').classList.toggle('hidden',!isDeveloperAccount());setBgmTrack(loggedIn?LOBBY_BGM_ID:LOGIN_BGM_ID);syncSoundButtons();if(!loggedIn){$('#auth-form').reset();$('#auth-message').textContent='';$('#auth-message').className='';}}
 
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
 function displayDate(value){const date=new Date(value);return Number.isNaN(date.getTime())?'':date.toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});}
@@ -229,6 +265,11 @@ function renderSuggestions(items,developer){
 }
 async function submitSuggestion(event){event.preventDefault();const content=$('#suggestion-content').value.trim(),message=$('#suggestion-message');message.className='';if(content.length<2){message.textContent='내용을 2자 이상 입력해 주세요.';return;}message.textContent='보내는 중...';try{await apiRequest('/api/suggestions',{method:'POST',body:JSON.stringify({content})});message.textContent='건의가 전달되었습니다. 답변이 등록되면 여기에서 확인할 수 있어요.';message.className='success';$('#suggestion-content').value='';const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],false);}catch(error){message.textContent=error.message;}}
 async function replySuggestion(event){event.preventDefault();const form=event.currentTarget,textarea=form.querySelector('textarea'),response=textarea.value.trim();if(!response)return;const button=form.querySelector('button');button.disabled=true;try{await apiRequest(`/api/suggestions/${form.dataset.suggestionId}/reply`,{method:'PUT',body:JSON.stringify({response})});const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],true);}catch(error){button.disabled=false;window.alert(error.message);}}
+async function openAdmin(){
+  if(!isDeveloperAccount())return;
+  $('#admin-summary').textContent='회원 정보를 불러오는 중...';$('#admin-account-list').innerHTML='';$('#admin-dialog').showModal();
+  try{const data=await apiRequest('/api/admin/accounts'),accounts=data.accounts||[];$('#admin-summary').textContent=`가입 회원 ${accounts.length}명 · 비밀번호 등 민감 정보는 표시하지 않습니다.`;$('#admin-account-list').innerHTML=accounts.length?accounts.map(account=>`<article class="admin-account"><strong>${escapeHtml(account.id)}</strong><span>스테이지 ${Number(account.highestStage||0)+1}</span><span>골드 ${Number(account.gold||0).toLocaleString()}</span><small>가입 ${displayDate(account.createdAt)}</small></article>`).join(''):'<p>가입 회원이 없습니다.</p>';}catch(error){$('#admin-summary').textContent=`회원 정보를 불러오지 못했습니다: ${error.message}`;}
+}
 
 function loadProgress(serverProgress=null){
   if(isDeveloperAccount())return developerProgress();
@@ -249,7 +290,12 @@ function renderDeck(){
   unitButtons=[...document.querySelectorAll('.unit-card')];unitButtons.forEach(b=>b.addEventListener('click',()=>summon(b.dataset.unit)));
 }
 function unitIcon(type){return UNIT_TYPES[type].icon||({runner:'ฅ',tank:'◉',fighter:'⚔',mage:'✦'}[type]);}
-function unitPortrait(type){const file=CHARACTER_SPRITES[type];return file?`<span class="unit-portrait sprite" style="background-image:url('assets/characters/${file}')"></span>`:`<span class="unit-portrait ${type}">${unitIcon(type)}</span>`;}
+function unitPortrait(type){
+  const file=CHARACTER_SPRITES[type],sheet=SPRITE_FRAMES[type];
+  if(!file||!sheet)return `<span class="unit-portrait ${type}">${unitIcon(type)}</span>`;
+  const [x,y,w,h]=sheet.frames[0],pad=Math.max(w,h)*.045;
+  return `<span class="unit-portrait sprite"><svg viewBox="${x-pad} ${y-pad} ${w+pad*2} ${h+pad*2}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}" overflow="hidden"><image href="assets/characters/${file}" width="${sheet.width}" height="${sheet.height}"/></svg></svg></span>`;
+}
 function rarityClass(rarity){return rarity==='레전드 레어'?'legend':rarity==='울트라 슈퍼 레어'?'ultra':rarity==='슈퍼 레어'?'super':rarity==='레어'?'rare':rarity==='EX'?'ex':'normal';}
 function renderCollection(){if(!$('#collection'))return;$('#collection').innerHTML=GACHA_UNITS.map(type=>{const u=UNIT_TYPES[type],owned=progress.owned.includes(type);return `<span class="${owned?'owned':''}"><b>${u.rarity}</b>${owned?u.label:'???'}<br>${owned?`Lv.${progress.levels[type]}`:'미획득'}</span>`;}).join('');}
 function openLineup(){selectedLineupSlot=0;renderLineup();$('#lineup-dialog').showModal();}
@@ -260,8 +306,8 @@ function renderLineup(){
   document.querySelectorAll('.roster-card').forEach(button=>button.onclick=()=>equipUnit(button.dataset.roster));
 }
 function equipUnit(type){const other=progress.loadout.indexOf(type),current=progress.loadout[selectedLineupSlot];if(other>=0){progress.loadout[other]=current;}progress.loadout[selectedLineupSlot]=type;saveProgress();renderLineup();}
-function setGachaButtons(disabled=false){$('#draw-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<300);$('#draw-ten-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<3000);$('#golden-draw-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<1000);}
-function openGacha(){renderCollection();$('#gacha-result').className='gacha-result';$('#gacha-result').textContent='전설의 고양이에게 도전해 보세요!';$('#gacha-stage').className='gacha-stage';$('#confetti').innerHTML='';$('#coupon-message').textContent='특별 코드를 입력해 보세요.';$('#coupon-message').className='';setGachaButtons();$('#gacha-dialog').showModal();}
+function setGachaButtons(disabled=false){disabled=disabled||gachaBusy;$('#draw-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<300);$('#draw-ten-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<3000);$('#golden-draw-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<1000);}
+function openGacha(){resetGachaAnimation();renderCollection();$('#gacha-result').className='gacha-result';$('#gacha-result').textContent='전설의 고양이에게 도전해 보세요!';$('#gacha-stage').className='gacha-stage';$('#confetti').innerHTML='';$('#coupon-message').textContent='특별 코드를 입력해 보세요.';$('#coupon-message').className='';setGachaButtons();$('#gacha-dialog').showModal();}
 function rollGacha(randomValue=Math.random(),rates=GACHA_RATES){
   const total=rates.reduce((sum,item)=>sum+item.rate,0),roll=Math.min(total-Number.EPSILON,randomValue*total);
   let cursor=0,rarity=rates[rates.length-1].rarity;
@@ -272,12 +318,23 @@ function drawGacha(){performGacha(1);}
 function drawTenGacha(){performGacha(10);}
 function drawGoldenGacha(){performGacha(1,true);}
 function performGacha(count,golden=false){
+  if(gachaBusy)return;
   const cost=golden?1000:count*300;if(!isDeveloperAccount()&&progress.gold<cost)return;if(!isDeveloperAccount())progress.gold-=cost;
   const rates=golden?GOLDEN_GACHA_RATES:GACHA_RATES,results=Array.from({length:count},()=>{const type=rollGacha(Math.random(),rates),isNew=!progress.owned.includes(type);if(isNew){progress.owned.push(type);progress.levels[type]=1;}else progress.levels[type]=(progress.levels[type]||1)+1;return {type,isNew,level:progress.levels[type],rarity:UNIT_TYPES[type].rarity};});
   const best=results.reduce((a,b)=>(RARITY_RANK[b.rarity]||0)>(RARITY_RANK[a.rarity]||0)?b:a),capsule=$('#capsule'),stage=$('#gacha-stage'),resultBox=$('#gacha-result');
-  capsule.classList.add('drawing');stage.className=golden?'gacha-stage golden':'gacha-stage';$('#confetti').innerHTML='';resultBox.className='gacha-result';resultBox.textContent=golden?'황금빛 기운을 모으는 중...':count===10?'10개의 황금 발바닥을 여는 중...':'기운을 모으는 중...';setGachaButtons(true);playGachaSound();
-  setTimeout(()=>{capsule.classList.remove('drawing');stage.classList.add('revealing',best.rarity==='레전드 레어'?'legend':best.rarity==='울트라 슈퍼 레어'?'ultra':best.rarity==='슈퍼 레어'?'super':'normal');createConfetti(best.rarity);},GACHA_POP_DELAY);
-  setTimeout(()=>{stage.classList.remove('revealing');stopGachaSound();if(count===1){const item=results[0];resultBox.innerHTML=`${golden?'<b>✨ 황금 뽑기 ✨</b><br>':''}<strong>${item.rarity} · ${UNIT_TYPES[item.type].label}</strong><br>${item.isNew?'새 캐릭터 획득!':`중복 획득! Lv.${item.level} 강화`}`;}else{resultBox.className='gacha-result ten-results';resultBox.innerHTML=results.map((item,index)=>`<span><b>${index+1}. ${item.rarity}</b><br>${UNIT_TYPES[item.type].label}<em>${item.isNew?'NEW':`Lv.${item.level}`}</em></span>`).join('');}saveProgress();setGachaButtons();},GACHA_RESULT_DELAY);
+  // Commit rewards before presentation so closing the dialog cannot lose a paid draw.
+  saveProgress();gachaBusy=true;gachaStartedAt=performance.now();
+  capsule.classList.add('drawing');stage.className=`gacha-stage charging ${rarityClass(best.rarity)}${golden?' golden':''}`;
+  $('#confetti').innerHTML='';$('#gacha-prize').innerHTML=unitPortrait(best.type);$('#gacha-rarity').textContent=`${best.rarity}!!`;
+  resultBox.className='gacha-result';resultBox.textContent=count===10?'10개의 캡슐에 기운이 모입니다...':'캡슐에 기운이 모입니다...';setGachaButtons(true);playGachaSound();
+  gachaTimers.push(setTimeout(()=>{capsule.classList.remove('drawing');stage.classList.remove('charging');stage.classList.add('opening');resultBox.textContent='새로운 고양이가 나타납니다!';},GACHA_POP_DELAY));
+  gachaTimers.push(setTimeout(()=>{stage.classList.add('revealed');createConfetti(best.rarity);},GACHA_REVEAL_DELAY));
+  gachaTimers.push(setTimeout(()=>{
+    stage.classList.add('settled');stopGachaSound();
+    if(count===1){const item=results[0];resultBox.innerHTML=`${golden?'<b>✨ 황금 뽑기 ✨</b><br>':''}<strong>${item.rarity} · ${UNIT_TYPES[item.type].label}</strong><br>${item.isNew?'새 캐릭터 획득!':`중복 획득! Lv.${item.level} 강화`}`;}
+    else{resultBox.className='gacha-result ten-results';resultBox.innerHTML=results.map((item,index)=>`<span><b>${index+1}. ${item.rarity}</b><br>${UNIT_TYPES[item.type].label}<em>${item.isNew?'NEW':`Lv.${item.level}`}</em></span>`).join('');}
+    gachaBusy=false;gachaTimers=[];renderCollection();setGachaButtons();
+  },GACHA_RESULT_DELAY));
 }
 function createConfetti(rarity){
   const colors=rarity==='레전드 레어'?['#ffd447','#fff','#ff8c42']:rarity==='울트라 슈퍼 레어'?['#67dbff','#a98cff','#fff']:['#ffd447','#ef476f','#55d6be','#8b7cff'];
@@ -425,12 +482,15 @@ function drawUnit(u){
   drawUnitGear(u.unitType,size);healthMini(u);ctx.restore();
 }
 function drawSpriteUnit(unit,image){
-  const frameWidth=image.naturalWidth/4,frameHeight=image.naturalHeight/2,isAttacking=(unit.actionTime||0)>0;
+  const isAttacking=(unit.actionTime||0)>0;
   const elapsed = isAttacking ? (0.55 - unit.actionTime) : (game?.time || 0);
-  const frame = Math.min(3, Math.floor(elapsed / (isAttacking ? 0.1375 : 0.11)) % 4), row = isAttacking ? 1 : 0;
+  const frame = Math.max(0,Math.floor(elapsed / (isAttacking ? 0.1375 : 0.11)) % 4), row = isAttacking ? 1 : 0;
   const spriteWidths={titan:125,phoenix:112,paladin:118,dragon:110,cosmic:112,emperor:120,chronos:120};
-  const width=spriteWidths[unit.unitType]||(['mage'].includes(unit.unitType)?112:100),height=width*(frameHeight/frameWidth);
-  ctx.drawImage(image,frame*frameWidth,row*frameHeight,frameWidth,frameHeight,-width/2,-height*.8,width,height);
+  const sheet=SPRITE_FRAMES[unit.unitType],bounds=sheet.frames[row*4+frame];
+  const [sx,sy,sw,sh]=bounds,baseWidth=spriteWidths[unit.unitType]||(unit.unitType==='mage'?112:100);
+  // Keep one scale across poses and anchor the visible feet to the unit's ground line.
+  const scale=baseWidth/(sheet.width/4),width=sw*scale,height=sh*scale;
+  ctx.drawImage(image,sx,sy,sw,sh,-width/2,-height+12,width,height);
 }
 function drawUnitGear(type,size){
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#22263a';ctx.fillStyle='#4b526d';ctx.lineWidth=4;
@@ -462,7 +522,10 @@ function drawUnitGear(type,size){
   }ctx.restore();
 }
 function drawEnemy(e){
-  ctx.save();ctx.translate(e.x,e.y);if(e.hit)ctx.globalAlpha=.5;ctx.fillStyle=e.color;ctx.strokeStyle='#2b1b27';ctx.lineWidth=3;
+  ctx.save();ctx.translate(e.x,e.y);if(e.hit)ctx.globalAlpha=.5;
+  const sprite=enemyImages[e.kind];
+  if(sprite?.complete&&sprite.naturalWidth){drawEnemySprite(e,sprite);healthMini(e);ctx.restore();return;}
+  ctx.fillStyle=e.color;ctx.strokeStyle='#2b1b27';ctx.lineWidth=3;
   const sizes={boar:28,gorilla:30,rhino:33,mech:31,demon:35,wolf:25,crab:32,bat:24,golem:38,sorcerer:29,hyena:27,guardian:40,cannon:34,reaper:38,leviathan:48,overlord:58,godOverlord:68},size=sizes[e.kind]||20;
   if(e.kind==='snake'){ctx.lineWidth=14;ctx.strokeStyle=e.color;ctx.beginPath();ctx.moveTo(-28,-5);ctx.bezierCurveTo(-18,-42,5,-3,22,-35);ctx.stroke();ctx.fillStyle='#222';ctx.beginPath();ctx.arc(18,-40,3,0,7);ctx.fill();}
   else if(e.kind==='bird'){ctx.beginPath();ctx.arc(0,-24,size,0,7);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-12,-27);ctx.lineTo(-40,-43);ctx.lineTo(-25,-13);ctx.fill();ctx.stroke();}
@@ -482,6 +545,15 @@ function drawEnemy(e){
   if(e.kind==='leviathan'){ctx.strokeStyle='#18323a';ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(-35,-25);ctx.bezierCurveTo(-65,-5,-60,8,-75,12);ctx.moveTo(35,-25);ctx.bezierCurveTo(65,-5,60,8,75,12);ctx.stroke();ctx.fillStyle='#8ee9e0';ctx.beginPath();ctx.moveTo(-34,-72);ctx.lineTo(-15,-110);ctx.lineTo(-5,-75);ctx.moveTo(34,-72);ctx.lineTo(15,-110);ctx.lineTo(5,-75);ctx.fill();}
   if(e.boss){if(e.hp<=e.maxHp*.5){ctx.strokeStyle='#ff334d';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,-size,size+12,0,7);ctx.stroke();}ctx.fillStyle=e.kind==='godOverlord'?'#80eaff':'#ffd447';ctx.beginPath();ctx.moveTo(-28,-96);ctx.lineTo(-20,-130);ctx.lineTo(-5,-104);ctx.lineTo(9,-134);ctx.lineTo(27,-99);ctx.closePath();ctx.fill();ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(`${e.label} · 방어 ${e.armor}`,0,-150);ctx.fillStyle='#16091d';ctx.fillRect(-70,8,140,12);ctx.fillStyle=e.kind==='godOverlord'?'#55e8ff':'#ff3fcf';ctx.fillRect(-70,8,140*Math.max(0,e.hp/e.maxHp),12);}
   else healthMini(e);ctx.restore();
+}
+function drawEnemySprite(enemy,image){
+  // Enemy artwork uses four walking frames on the top row and four attack frames below.
+  const attacking=(enemy.actionTime||0)>0,elapsed=attacking?.55-enemy.actionTime:(game?.time||0);
+  const frame=Math.max(0,Math.floor(elapsed/(attacking?.1375:.11))%4),cellWidth=image.naturalWidth/4,cellHeight=image.naturalHeight/2;
+  const sourceX=frame*cellWidth,sourceY=(attacking?1:0)*cellHeight;
+  const sizes={boar:28,gorilla:30,rhino:33,mech:31,demon:35,wolf:25},base=sizes[enemy.kind]||20;
+  const height=Math.min(160,Math.max(100,base*4)),width=height*(cellWidth/cellHeight);
+  ctx.save();ctx.scale(-1,1);ctx.drawImage(image,sourceX,sourceY,cellWidth,cellHeight,-width/2,-height+10,width,height);ctx.restore();
 }
 function healthMini(u){if(u.hp>=u.maxHp)return;ctx.fillStyle='#141525';ctx.fillRect(-22,4,44,5);ctx.fillStyle=u.side==='cat'?'#55d6be':'#ef476f';ctx.fillRect(-22,4,44*Math.max(0,u.hp/u.maxHp),5);}
 function drawProjectile(p){ctx.fillStyle=p.color||'#f7dcff';ctx.shadowColor=p.color||'#b46cff';ctx.shadowBlur=12;ctx.beginPath();ctx.arc(p.x,p.y,7,0,7);ctx.fill();ctx.shadowBlur=0;}
