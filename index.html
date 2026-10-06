@@ -56,6 +56,7 @@
         <div class="gold-display" title="보유 골드"><span>🪙</span><strong id="gold">0</strong></div>
         <button id="lineup-button" class="icon-button lineup-icon" type="button" aria-label="출전 슬롯 편성">편성</button>
         <button id="gacha-button" class="icon-button gacha-icon" type="button" aria-label="캐릭터 뽑기">🎁</button>
+        <button id="community-button" class="icon-button community-icon" type="button" aria-label="커뮤니티">☰</button>
         <button id="suggestion-button" class="icon-button suggestion-icon" type="button" aria-label="건의함">💬</button>
         <button id="admin-button" class="icon-button admin-icon" type="button" aria-label="개발자 관리">⚙</button>
         <button id="sound-button" class="icon-button" type="button" aria-label="소리 켜기">🔇</button>
@@ -174,15 +175,37 @@
     </form>
     <div id="suggestion-list" class="suggestion-list"></div>
   </dialog>
+  <dialog id="community-dialog" class="community-dialog">
+    <button class="dialog-close" id="close-community" type="button" aria-label="닫기">×</button>
+    <h2>커뮤니티</h2>
+    <p>다른 지휘관과 공략, 소식, 질문을 나눠 보세요.</p>
+    <form id="community-form" class="community-form">
+      <input id="community-title" maxlength="80" placeholder="제목 (2~80자)" required>
+      <textarea id="community-content" maxlength="1000" placeholder="내용을 적어 주세요. (2~1000자)" required></textarea>
+      <button class="main-button" type="submit">글 등록</button>
+      <small id="community-message" role="status"></small>
+    </form>
+    <div id="community-post-list" class="community-post-list"></div>
+  </dialog>
   <dialog id="admin-dialog" class="admin-dialog">
     <button class="dialog-close" id="close-admin" type="button" aria-label="닫기">×</button>
     <h2>개발자 관리자</h2>
     <p id="admin-summary">회원 정보를 불러오는 중...</p>
-    <p id="admin-summary">회원 정보를 불러오는 중...</p>
     <div id="admin-account-list" class="admin-account-list"></div>
+    <section class="coupon-admin">
+      <h3>선물 코드 만들기</h3>
+      <p>예: 코드 <b>3972</b>와 지급 골드를 정한 뒤 저장하세요. 같은 코드는 골드 값을 바꿔 다시 저장할 수 있습니다.</p>
+      <form id="coupon-create-form" class="coupon-create-form">
+        <label>코드<input id="admin-coupon-code" maxlength="32" placeholder="예: 3972" required></label>
+        <label>지급 골드<input id="admin-coupon-gold" type="number" min="1" max="10000000" step="1" value="10000" required></label>
+        <button type="submit">저장</button>
+      </form>
+      <small id="coupon-admin-message" role="status"></small>
+      <div id="coupon-admin-list" class="coupon-admin-list"></div>
+    </section>
   </dialog>
   <iframe id="bgm-player" class="bgm-player" title="게임 배경음악" allow="autoplay"></iframe>
   <script src="sprite-frames.js?v=20260929-sprites3"></script>
-  <script src="game.js?v=20260929-sprites3"></script>
+  <script src="game.js?v=20261006-community1"></script>
 </body>
 </html>

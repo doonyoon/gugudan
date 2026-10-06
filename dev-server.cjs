@@ -37,6 +37,42 @@ async function api(request,response,pathname){
       const accounts=await store.listAccounts();
       return json(response,200,{accounts:accounts.map(account=>({id:account.id,gold:Number(account.progress?.gold||0),highestStage:Number(account.progress?.highestStage||0),createdAt:account.created_at,updatedAt:account.updated_at||account.created_at}))});
     }
+    if(request.method==='GET'&&pathname==='/api/admin/coupons'){
+      const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 선물 코드를 관리할 수 있습니다.'});
+      return json(response,200,{coupons:await store.listCoupons()});
+    }
+    if(request.method==='POST'&&pathname==='/api/admin/coupons'){
+      const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 선물 코드를 만들 수 있습니다.'});
+      const {code,gold}=await readJson(request),normalized=typeof code==='string'?code.trim().toUpperCase():'' ,amount=Number(gold);
+      if(!/^[A-Z0-9_-]{3,32}$/.test(normalized))return json(response,400,{error:'코드는 영문, 숫자, 밑줄, 하이픈으로 3~32자여야 합니다.'});
+      if(!Number.isInteger(amount)||amount<1||amount>10000000)return json(response,400,{error:'지급 골드는 1~10,000,000 사이의 정수여야 합니다.'});
+      return json(response,201,{coupon:await store.createCoupon(normalized,amount,id)});
+    }
+    if(request.method==='POST'&&pathname==='/api/coupons/redeem'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      if(id===developerId)return json(response,400,{error:'개발자 계정은 선물 코드를 사용할 수 없습니다.'});
+      const {code}=await readJson(request),normalized=typeof code==='string'?code.trim().toUpperCase():'';
+      if(!normalized)return json(response,400,{error:'코드를 입력해 주세요.'});
+      const reward=await store.redeemCoupon(id,normalized);return json(response,200,reward);
+    }
+    if(request.method==='GET'&&pathname==='/api/community/posts'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      return json(response,200,{posts:await store.listPosts()});
+    }
+    if(request.method==='POST'&&pathname==='/api/community/posts'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      const {title,content}=await readJson(request),cleanTitle=typeof title==='string'?title.trim():'',cleanContent=typeof content==='string'?content.trim():'';
+      if(cleanTitle.length<2||cleanTitle.length>80||cleanContent.length<2||cleanContent.length>1000)return json(response,400,{error:'제목은 2~80자, 내용은 2~1000자로 입력해 주세요.'});
+      return json(response,201,{post:await store.createPost(id,cleanTitle,cleanContent)});
+    }
+    const commentMatch=pathname.match(/^\/api\/community\/posts\/(\d+)\/comments$/);
+    if(request.method==='POST'&&commentMatch){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      const {content}=await readJson(request),text=typeof content==='string'?content.trim():'';
+      if(text.length<1||text.length>500)return json(response,400,{error:'댓글은 1~500자로 입력해 주세요.'});
+      const comment=await store.createComment(id,commentMatch[1],text);if(!comment)return json(response,404,{error:'게시글을 찾을 수 없습니다.'});
+      return json(response,201,{comment});
+    }
     if(request.method==='POST'&&pathname==='/api/suggestions'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       const {content}=await readJson(request),text=typeof content==='string'?content.trim():'';
@@ -56,7 +92,7 @@ async function api(request,response,pathname){
       return json(response,200,{suggestion});
     }
     return json(response,404,{error:'API를 찾을 수 없습니다.'});
-  }catch(error){console.error(error);return json(response,error.code==='23505'?409:500,{error:error.code==='23505'?'이미 사용 중인 아이디입니다.':'서버 저장 중 오류가 발생했습니다.'});}
+  }catch(error){console.error(error);const messages={23505:'이미 사용 중인 아이디입니다.',coupon_not_found:'존재하지 않거나 종료된 코드예요.',coupon_used:'이미 사용한 코드예요.',account_not_found:'계정을 찾을 수 없습니다.'};return json(response,messages[error.code]?400:500,{error:messages[error.code]||'서버 저장 중 오류가 발생했습니다.'});}
 }
 function handle(request,response){
   const pathname=decodeURIComponent(request.url.split('?')[0]);response.setHeader('X-Content-Type-Options','nosniff');response.setHeader('Referrer-Policy','strict-origin-when-cross-origin');

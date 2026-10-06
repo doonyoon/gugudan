@@ -171,11 +171,15 @@ $('#sound-button').addEventListener('click', toggleSound);
 $('#auth-sound-button').addEventListener('click', toggleSound);
 $('#gacha-sound-toggle').addEventListener('click',toggleSound);
 $('#gacha-button').addEventListener('click', openGacha);
+$('#community-button').addEventListener('click', openCommunity);
+$('#close-community').addEventListener('click', () => $('#community-dialog').close());
+$('#community-form').addEventListener('submit', submitCommunityPost);
 $('#suggestion-button').addEventListener('click', openSuggestions);
 $('#close-suggestion').addEventListener('click', () => $('#suggestion-dialog').close());
 $('#suggestion-form').addEventListener('submit', submitSuggestion);
 $('#admin-button').addEventListener('click', openAdmin);
 $('#close-admin').addEventListener('click', () => $('#admin-dialog').close());
+$('#coupon-create-form').addEventListener('submit', createCoupon);
 $('#close-gacha').addEventListener('click', () => $('#gacha-dialog').close());
 $('#gacha-dialog').addEventListener('close', resetGachaAnimation);
 $('#gacha-dialog').addEventListener('cancel', resetGachaAnimation);
@@ -265,10 +269,20 @@ function renderSuggestions(items,developer){
 }
 async function submitSuggestion(event){event.preventDefault();const content=$('#suggestion-content').value.trim(),message=$('#suggestion-message');message.className='';if(content.length<2){message.textContent='내용을 2자 이상 입력해 주세요.';return;}message.textContent='보내는 중...';try{await apiRequest('/api/suggestions',{method:'POST',body:JSON.stringify({content})});message.textContent='건의가 전달되었습니다. 답변이 등록되면 여기에서 확인할 수 있어요.';message.className='success';$('#suggestion-content').value='';const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],false);}catch(error){message.textContent=error.message;}}
 async function replySuggestion(event){event.preventDefault();const form=event.currentTarget,textarea=form.querySelector('textarea'),response=textarea.value.trim();if(!response)return;const button=form.querySelector('button');button.disabled=true;try{await apiRequest(`/api/suggestions/${form.dataset.suggestionId}/reply`,{method:'PUT',body:JSON.stringify({response})});const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],true);}catch(error){button.disabled=false;window.alert(error.message);}}
+async function openCommunity(){
+  $('#community-message').textContent='';$('#community-message').className='';$('#community-post-list').innerHTML='<p>게시글을 불러오는 중...</p>';$('#community-dialog').showModal();
+  try{const data=await apiRequest('/api/community/posts');renderCommunityPosts(data.posts||[]);}catch(error){$('#community-post-list').innerHTML=`<p>커뮤니티를 불러오지 못했습니다: ${escapeHtml(error.message)}</p>`;}
+}
+function renderCommunityPosts(posts){const list=$('#community-post-list');if(!posts.length){list.innerHTML='<p>아직 작성된 글이 없습니다. 첫 글을 남겨 보세요!</p>';return;}list.innerHTML=posts.map(post=>`<article class="community-post"><header><strong>${escapeHtml(post.user_id)}</strong><span>${displayDate(post.created_at)}</span></header><h3>${escapeHtml(post.title)}</h3><p>${escapeHtml(post.content)}</p><section class="comments">${(post.comments||[]).length?(post.comments||[]).map(comment=>`<div class="comment"><b>${escapeHtml(comment.user_id)}</b>${escapeHtml(comment.content)}<small>${displayDate(comment.created_at)}</small></div>`).join(''):'<small>첫 댓글을 남겨 보세요.</small>'}</section><form class="comment-form" data-post-id="${post.id}"><textarea maxlength="500" placeholder="댓글을 입력하세요" required></textarea><button type="submit">댓글</button></form></article>`).join('');list.querySelectorAll('.comment-form').forEach(form=>form.addEventListener('submit',submitCommunityComment));}
+async function submitCommunityPost(event){event.preventDefault();const title=$('#community-title').value.trim(),content=$('#community-content').value.trim(),message=$('#community-message');message.className='';if(title.length<2||content.length<2){message.textContent='제목과 내용을 2자 이상 입력해 주세요.';return;}message.textContent='등록 중...';try{await apiRequest('/api/community/posts',{method:'POST',body:JSON.stringify({title,content})});$('#community-title').value='';$('#community-content').value='';message.textContent='글을 등록했습니다.';message.className='success';const data=await apiRequest('/api/community/posts');renderCommunityPosts(data.posts||[]);}catch(error){message.textContent=error.message;}}
+async function submitCommunityComment(event){event.preventDefault();const form=event.currentTarget,textarea=form.querySelector('textarea'),content=textarea.value.trim(),button=form.querySelector('button');if(!content)return;button.disabled=true;try{await apiRequest(`/api/community/posts/${form.dataset.postId}/comments`,{method:'POST',body:JSON.stringify({content})});const data=await apiRequest('/api/community/posts');renderCommunityPosts(data.posts||[]);}catch(error){button.disabled=false;window.alert(error.message);}}
+function renderCoupons(coupons){const list=$('#coupon-admin-list');list.innerHTML=coupons.length?coupons.map(coupon=>`<div class="coupon-admin-item"><b>${escapeHtml(coupon.code)}</b><span>${Number(coupon.gold).toLocaleString()} 골드 · ${coupon.active?'사용 가능':'종료'}</span></div>`).join(''):'<p>아직 만든 선물 코드가 없습니다.</p>';}
+async function loadAdminCoupons(){const data=await apiRequest('/api/admin/coupons');renderCoupons(data.coupons||[]);}
+async function createCoupon(event){event.preventDefault();const code=$('#admin-coupon-code').value.trim(),gold=Number($('#admin-coupon-gold').value),message=$('#coupon-admin-message');message.className='';message.textContent='저장 중...';try{const data=await apiRequest('/api/admin/coupons',{method:'POST',body:JSON.stringify({code,gold})});message.textContent=`${data.coupon.code} 코드에 ${Number(data.coupon.gold).toLocaleString()} 골드를 저장했습니다.`;message.className='success';$('#admin-coupon-code').value='';await loadAdminCoupons();}catch(error){message.textContent=error.message;}}
 async function openAdmin(){
   if(!isDeveloperAccount()){window.alert('개발자 계정만 사용할 수 있습니다.');return;}
-  $('#admin-summary').textContent='회원 정보를 불러오는 중...';$('#admin-account-list').innerHTML='';$('#admin-dialog').showModal();
-  try{const data=await apiRequest('/api/admin/accounts'),accounts=data.accounts||[];$('#admin-summary').textContent=`가입 회원 ${accounts.length}명 · 비밀번호 등 민감 정보는 표시하지 않습니다.`;$('#admin-account-list').innerHTML=accounts.length?accounts.map(account=>`<article class="admin-account"><strong>${escapeHtml(account.id)}</strong><span>스테이지 ${Number(account.highestStage||0)+1}</span><span>골드 ${Number(account.gold||0).toLocaleString()}</span><small>가입 ${displayDate(account.createdAt)}</small></article>`).join(''):'<p>가입 회원이 없습니다.</p>';}catch(error){$('#admin-summary').textContent=`회원 정보를 불러오지 못했습니다: ${error.message}`;}
+  $('#admin-summary').textContent='회원 정보를 불러오는 중...';$('#admin-account-list').innerHTML='';$('#coupon-admin-list').innerHTML='';$('#coupon-admin-message').textContent='';$('#admin-dialog').showModal();
+  try{const [accountData,couponData]=await Promise.all([apiRequest('/api/admin/accounts'),apiRequest('/api/admin/coupons')]),accounts=accountData.accounts||[];$('#admin-summary').textContent=`가입 회원 ${accounts.length}명 · 비밀번호 등 민감 정보는 표시하지 않습니다.`;$('#admin-account-list').innerHTML=accounts.length?accounts.map(account=>`<article class="admin-account"><strong>${escapeHtml(account.id)}</strong><span>스테이지 ${Number(account.highestStage||0)+1}</span><span>골드 ${Number(account.gold||0).toLocaleString()}</span><small>가입 ${displayDate(account.createdAt)}</small></article>`).join(''):'<p>가입 회원이 없습니다.</p>';renderCoupons(couponData.coupons||[]);}catch(error){$('#admin-summary').textContent=`회원 정보를 불러오지 못했습니다: ${error.message}`;}
 }
 
 function loadProgress(serverProgress=null){
@@ -341,11 +355,11 @@ function createConfetti(rarity){
   const count=rarity==='레전드 레어'?45:28;$('#confetti').innerHTML=Array.from({length:count},(_,i)=>{const angle=Math.PI*2*i/count,distance=65+Math.random()*70;return `<i style="--x:${Math.cos(angle)*distance}px;--y:${Math.sin(angle)*distance}px;--rotate:${Math.random()*180}deg;--color:${colors[i%colors.length]}"></i>`;}).join('');
 }
 function playRevealSound(rarity){const notes=rarity==='레전드 레어'?[523,659,784,1047,1319]:rarity==='울트라 슈퍼 레어'?[440,554,659,880]:rarity==='슈퍼 레어'?[392,494,659]:[330,440,523];playJingle(notes,.09);}
-function redeemCoupon(event){
-  event.preventDefault();const input=$('#coupon-code'),message=$('#coupon-message'),code=input.value.trim();message.className='';
-  if(code!=='9027'){message.textContent='존재하지 않는 코드예요.';message.classList.add('error');playTone(140,.18,'sawtooth',.05);return;}
-  if(progress.redeemedCodes.includes(code)){message.textContent='이미 사용한 코드예요.';message.classList.add('error');return;}
-  progress.redeemedCodes.push(code);progress.gold+=10000;saveProgress();message.textContent='코드 성공! 10,000골드를 받았어요.';message.classList.add('success');input.value='';setGachaButtons();createConfetti('레전드 레어');playJingle([523,659,784,1047],.1);
+async function redeemCoupon(event){
+  event.preventDefault();const input=$('#coupon-code'),message=$('#coupon-message'),code=input.value.trim().toUpperCase();message.className='';
+  if(!code){message.textContent='코드를 입력해 주세요.';message.classList.add('error');return;}
+  if(isDeveloperAccount()){message.textContent='개발자 계정은 선물 코드를 사용할 수 없어요.';message.classList.add('error');return;}
+  message.textContent='코드 확인 중...';try{const data=await apiRequest('/api/coupons/redeem',{method:'POST',body:JSON.stringify({code})});progress=loadProgress(data.progress);localStorage.setItem(progressKey(),JSON.stringify(progress));renderMeta();message.textContent=`코드 성공! ${Number(data.gold).toLocaleString()}골드를 받았어요.`;message.classList.add('success');input.value='';setGachaButtons();createConfetti('레전드 레어');playJingle([523,659,784,1047],.1);}catch(error){message.textContent=error.message;message.classList.add('error');playTone(140,.18,'sawtooth',.05);}
 }
 
 function startBattle() {
