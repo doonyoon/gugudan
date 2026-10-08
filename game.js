@@ -3,6 +3,7 @@ const battleSpeedButton = document.createElement('button');
 battleSpeedButton.id = 'battle-speed';
 battleSpeedButton.type = 'button';
 battleSpeedButton.className = 'icon-button';
+Object.assign(battleSpeedButton.style, { width: '60px', minWidth: '60px', height: '26px', padding: '0 8px', whiteSpace: 'nowrap', fontSize: '12px', lineHeight: '1', borderRadius: '8px', verticalAlign: 'middle' });
 battleSpeedButton.textContent = '1배속';
 battleSpeedButton.setAttribute('aria-label', '전투 2배속');
 battleSpeedButton.setAttribute('aria-pressed', 'false');
