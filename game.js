@@ -1,3 +1,20 @@
+let battleSpeed = 1;
+const battleSpeedButton = document.createElement('button');
+battleSpeedButton.id = 'battle-speed';
+battleSpeedButton.type = 'button';
+battleSpeedButton.className = 'icon-button';
+battleSpeedButton.textContent = '1배속';
+battleSpeedButton.setAttribute('aria-label', '전투 2배속');
+battleSpeedButton.setAttribute('aria-pressed', 'false');
+battleSpeedButton.title = '전투 속도 전환 (음악 속도는 유지됩니다)';
+battleSpeedButton.addEventListener('click', () => {
+  battleSpeed = battleSpeed === 1 ? 2 : 1;
+  battleSpeedButton.textContent = `${battleSpeed}배속`;
+  battleSpeedButton.setAttribute('aria-pressed', String(battleSpeed === 2));
+  battleSpeedButton.style.backgroundColor = battleSpeed === 2 ? '#ffd447' : '';
+  battleSpeedButton.style.color = battleSpeed === 2 ? '#17192a' : '';
+});
+document.querySelector('.stage-info').append(battleSpeedButton);
 const canvas = document.querySelector('#game-canvas');
 const ctx = canvas.getContext('2d');
 const $ = (selector) => document.querySelector(selector);
@@ -378,7 +395,9 @@ function exitBattle(){
   game.running=false;cancelAnimationFrame(animationId);game=null;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setBgmTrack(LOBBY_BGM_ID);renderMeta();playTone(220,.2,'triangle',.06);
 }
 function loop(now) {
-  const dt=Math.min((now-lastTime)/1000,.04); lastTime=now; if(game?.running) update(dt); draw(); updateUI(); if(game?.running) animationId=requestAnimationFrame(loop);
+  const dt=Math.max(0,Math.min((now-lastTime)/1000,.04)); lastTime=now;
+  for(let step=0;step<battleSpeed&&game?.running;step++) update(dt);
+  draw(); updateUI(); if(game?.running) animationId=requestAnimationFrame(loop);
 }
 function update(dt) {
   game.time+=dt;game.bossWarning=Math.max(0,game.bossWarning-dt);game.bossRageWarning=Math.max(0,game.bossRageWarning-dt); game.money=Math.min(game.maxMoney,game.money+game.income*dt); game.enemyTimer-=dt;
