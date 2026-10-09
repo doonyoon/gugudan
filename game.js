@@ -29,7 +29,7 @@ const CHARACTER_SPRITES = {
 const spriteImages = Object.fromEntries(Object.entries(CHARACTER_SPRITES).map(([type,file]) => {
   const image = new Image(); image.src = `assets/characters/${file}`; return [type,image];
 }));
-const ENEMY_SPRITES = {pup:'pup.png',boar:'boar.png',bird:'bird.png',snake:'snake.png',gorilla:'gorilla.png',rhino:'rhino.png',ghost:'ghost.png',mech:'mech.png',demon:'demon.png',wolf:'wolf.png'};
+const ENEMY_SPRITES = {pup:'pup.png',boar:'boar.png',bird:'bird.png',snake:'snake.png',gorilla:'gorilla.png',rhino:'rhino.png',ghost:'ghost.png',mech:'mech.png',demon:'demon.png',wolf:'wolf.png',crab:'crab.png',bat:'bat.png',golem:'golem.png',sorcerer:'sorcerer.png',hyena:'hyena.png',guardian:'guardian.png',cannon:'cannon.png',reaper:'reaper.png',leviathan:'leviathan.png',overlord:'overlord.png',godOverlord:'god-overlord.png'};
 const enemyImages = Object.fromEntries(Object.entries(ENEMY_SPRITES).map(([type,file]) => {
   const image = new Image(); image.src = `assets/enemies/${file}`; return [type,image];
 }));
@@ -606,8 +606,8 @@ function drawEnemySprite(enemy,image){
   const attacking=(enemy.actionTime||0)>0,elapsed=attacking?.55-enemy.actionTime:(game?.time||0);
   const frame=Math.max(0,Math.floor(elapsed/(attacking?.1375:.11))%4),cellWidth=image.naturalWidth/4,cellHeight=image.naturalHeight/2;
   const sourceX=frame*cellWidth,sourceY=(attacking?1:0)*cellHeight;
-  const sizes={boar:28,gorilla:30,rhino:33,mech:31,demon:35,wolf:25},base=sizes[enemy.kind]||20;
-  const height=Math.min(160,Math.max(100,base*4)),width=height*(cellWidth/cellHeight);
+  const sizes={pup:20,boar:28,bird:23,snake:24,gorilla:30,rhino:33,ghost:30,mech:31,demon:35,wolf:25,crab:32,bat:24,golem:38,sorcerer:29,hyena:27,guardian:40,cannon:34,reaper:38,leviathan:48,overlord:58,godOverlord:68},base=sizes[enemy.kind]||20;
+  const height=Math.min(250,Math.max(88,base*4)),width=height*(cellWidth/cellHeight);
   ctx.save();ctx.scale(-1,1);ctx.drawImage(image,sourceX,sourceY,cellWidth,cellHeight,-width/2,-height+10,width,height);ctx.restore();
 }
 function healthMini(u){if(u.hp>=u.maxHp)return;ctx.fillStyle='#141525';ctx.fillRect(-22,4,44,5);ctx.fillStyle=u.side==='cat'?'#55d6be':'#ef476f';ctx.fillRect(-22,4,44*Math.max(0,u.hp/u.maxHp),5);}
