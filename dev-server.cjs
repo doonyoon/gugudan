@@ -90,6 +90,12 @@ async function api(request,response,pathname){
       if(cleanTitle.length<2||cleanTitle.length>80||cleanContent.length<2||cleanContent.length>1000)return json(response,400,{error:'제목은 2~80자, 내용은 2~1000자로 입력해 주세요.'});
       return json(response,201,{post:await store.createPost(id,cleanTitle,cleanContent)});
     }
+    const postMatch=pathname.match(/^\/api\/community\/posts\/(\d+)$/);
+    if(postMatch&&(request.method==='PUT'||request.method==='DELETE')){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const post=await store.getPost(postMatch[1]);if(!post)return json(response,404,{error:'게시글을 찾을 수 없습니다.'});if(post.user_id!==id&&id!==developerId)return json(response,403,{error:'작성자 또는 개발자만 수정·삭제할 수 있습니다.'});
+      if(request.method==='DELETE'){await store.deletePost(postMatch[1]);return json(response,200,{deleted:true});}
+      const {title,content}=await readJson(request),cleanTitle=typeof title==='string'?title.trim():'',cleanContent=typeof content==='string'?content.trim():'';if(cleanTitle.length<2||cleanTitle.length>80||cleanContent.length<2||cleanContent.length>1000)return json(response,400,{error:'제목은 2~80자, 내용은 2~1000자로 입력해 주세요.'});return json(response,200,{post:await store.updatePost(postMatch[1],cleanTitle,cleanContent)});
+    }
     const commentMatch=pathname.match(/^\/api\/community\/posts\/(\d+)\/comments$/);
     if(request.method==='POST'&&commentMatch){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
