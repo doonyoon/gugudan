@@ -70,6 +70,16 @@ async function api(request,response,pathname){
       if(!normalized)return json(response,400,{error:'코드를 입력해 주세요.'});
       const reward=await store.redeemCoupon(id,normalized);return json(response,200,reward);
     }
+    if(request.method==='GET'&&pathname==='/api/chat/contacts'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});return json(response,200,{contacts:await store.listChatContacts(id,developerId)});
+    }
+    const chatMatch=pathname.match(/^\/api\/chat\/([A-Za-z0-9가-힣_]{3,16})$/);
+    if(chatMatch&&request.method==='GET'){
+      const id=tokenUser(request),peer=chatMatch[1];if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(peer===id||(!await store.get(peer)&&peer!==developerId))return json(response,404,{error:'대화 상대를 찾을 수 없습니다.'});return json(response,200,{messages:await store.getDirectMessages(id,peer)});
+    }
+    if(chatMatch&&request.method==='POST'){
+      const id=tokenUser(request),peer=chatMatch[1];if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {content}=await readJson(request),text=typeof content==='string'?content.trim():'';if(peer===id||(!await store.get(peer)&&peer!==developerId))return json(response,404,{error:'대화 상대를 찾을 수 없습니다.'});if(text.length<1||text.length>500)return json(response,400,{error:'메시지는 1~500자로 입력해 주세요.'});return json(response,201,{message:await store.sendDirectMessage(id,peer,text)});
+    }
     if(request.method==='GET'&&pathname==='/api/community/posts'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       return json(response,200,{posts:await store.listPosts()});

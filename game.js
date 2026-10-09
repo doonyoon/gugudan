@@ -189,6 +189,10 @@ $('#sound-button').addEventListener('click', toggleSound);
 $('#auth-sound-button').addEventListener('click', toggleSound);
 $('#gacha-sound-toggle').addEventListener('click',toggleSound);
 $('#gacha-button').addEventListener('click', openGacha);
+$('#chat-button').addEventListener('click', openChat);
+$('#close-chat').addEventListener('click', closeChat);
+$('#chat-dialog').addEventListener('close', closeChat);
+$('#chat-form').addEventListener('submit', sendChatMessage);
 $('#community-button').addEventListener('click', openCommunity);
 $('#close-community').addEventListener('click', () => $('#community-dialog').close());
 $('#community-form').addEventListener('submit', submitCommunityPost);
@@ -292,6 +296,16 @@ function renderSuggestions(items,developer){
 }
 async function submitSuggestion(event){event.preventDefault();const content=$('#suggestion-content').value.trim(),message=$('#suggestion-message');message.className='';if(content.length<2){message.textContent='내용을 2자 이상 입력해 주세요.';return;}message.textContent='보내는 중...';try{await apiRequest('/api/suggestions',{method:'POST',body:JSON.stringify({content})});message.textContent='건의가 전달되었습니다. 답변이 등록되면 여기에서 확인할 수 있어요.';message.className='success';$('#suggestion-content').value='';const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],false);}catch(error){message.textContent=error.message;}}
 async function replySuggestion(event){event.preventDefault();const form=event.currentTarget,textarea=form.querySelector('textarea'),response=textarea.value.trim();if(!response)return;const button=form.querySelector('button');button.disabled=true;try{await apiRequest(`/api/suggestions/${form.dataset.suggestionId}/reply`,{method:'PUT',body:JSON.stringify({response})});const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],true);}catch(error){button.disabled=false;window.alert(error.message);}}
+let chatPeer='',chatPollTimer;
+async function openChat(){
+  $('#chat-contact-list').innerHTML='<p>회원 목록을 불러오는 중...</p>';$('#chat-message-list').innerHTML='';$('#chat-peer-title').textContent='대화 상대를 선택하세요';$('#chat-dialog').showModal();
+  try{const data=await apiRequest('/api/chat/contacts');renderChatContacts(data.contacts||[]);}catch(error){$('#chat-contact-list').innerHTML=`<p>${escapeHtml(error.message)}</p>`;}
+}
+function closeChat(){clearInterval(chatPollTimer);chatPollTimer=null;chatPeer='';if($('#chat-dialog').open)$('#chat-dialog').close();}
+function renderChatContacts(contacts){const list=$('#chat-contact-list');if(!contacts.length){list.innerHTML='<p>대화할 회원이 없습니다.</p>';return;}list.innerHTML=contacts.map(id=>`<button type="button" data-chat-peer="${escapeHtml(id)}" class="${id===chatPeer?'active':''}">${escapeHtml(id)}</button>`).join('');list.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>selectChatPeer(button.dataset.chatPeer)));}
+async function selectChatPeer(peer){chatPeer=peer;renderChatContacts([...$('#chat-contact-list').querySelectorAll('button')].map(button=>button.dataset.chatPeer));$('#chat-peer-title').textContent=`${peer} 님과의 대화`;await loadChatMessages();clearInterval(chatPollTimer);chatPollTimer=setInterval(()=>{if($('#chat-dialog').open&&chatPeer)loadChatMessages();},7000);}
+async function loadChatMessages(){if(!chatPeer)return;try{const data=await apiRequest(`/api/chat/${encodeURIComponent(chatPeer)}`);const list=$('#chat-message-list'),nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<50;list.innerHTML=(data.messages||[]).length?(data.messages||[]).map(message=>`<div class="chat-message ${message.sender_id===activeUser?'mine':''}">${escapeHtml(message.content)}<small>${message.sender_id===activeUser?'나':escapeHtml(message.sender_id)} · ${displayDate(message.created_at)}</small></div>`).join(''):'<p>아직 메시지가 없습니다. 먼저 인사해 보세요!</p>';if(nearBottom)list.scrollTop=list.scrollHeight;}catch(error){$('#chat-message-list').innerHTML=`<p>${escapeHtml(error.message)}</p>`;}}
+async function sendChatMessage(event){event.preventDefault();if(!chatPeer)return;const input=$('#chat-content'),content=input.value.trim(),button=event.currentTarget.querySelector('button');if(!content)return;button.disabled=true;try{await apiRequest(`/api/chat/${encodeURIComponent(chatPeer)}`,{method:'POST',body:JSON.stringify({content})});input.value='';await loadChatMessages();}catch(error){window.alert(error.message);}finally{button.disabled=false;}}
 async function openCommunity(){
   $('#community-message').textContent='';$('#community-message').className='';$('#community-post-list').innerHTML='<p>게시글을 불러오는 중...</p>';$('#community-dialog').showModal();
   try{const data=await apiRequest('/api/community/posts');renderCommunityPosts(data.posts||[]);}catch(error){$('#community-post-list').innerHTML=`<p>커뮤니티를 불러오지 못했습니다: ${escapeHtml(error.message)}</p>`;}

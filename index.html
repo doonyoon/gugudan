@@ -64,6 +64,7 @@
         <div class="gold-display" title="보유 골드"><span>🪙</span><strong id="gold">0</strong></div>
         <button id="lineup-button" class="icon-button lineup-icon" type="button" aria-label="출전 슬롯 편성">편성</button>
         <button id="gacha-button" class="icon-button gacha-icon" type="button" aria-label="캐릭터 뽑기">🎁</button>
+        <button id="chat-button" class="icon-button chat-icon" type="button" aria-label="1대1 채팅">✉</button>
         <button id="community-button" class="icon-button community-icon" type="button" aria-label="커뮤니티">☰</button>
         <button id="suggestion-button" class="icon-button suggestion-icon" type="button" aria-label="건의함">💬</button>
         <button id="admin-button" class="icon-button admin-icon" type="button" aria-label="개발자 관리">⚙</button>
@@ -195,6 +196,12 @@
     </form>
     <div id="community-post-list" class="community-post-list"></div>
   </dialog>
+  <dialog id="chat-dialog" class="chat-dialog">
+    <button class="dialog-close" id="close-chat" type="button" aria-label="닫기">×</button>
+    <h2>회원 1:1 채팅</h2>
+    <p>상대를 선택해 개인 메시지를 보내세요.</p>
+    <div class="chat-layout"><aside id="chat-contact-list" class="chat-contact-list"></aside><section class="chat-room"><h3 id="chat-peer-title">대화 상대를 선택하세요</h3><div id="chat-message-list" class="chat-message-list"></div><form id="chat-form" class="chat-form"><textarea id="chat-content" maxlength="500" placeholder="메시지 입력" required></textarea><button type="submit">보내기</button></form></section></div>
+  </dialog>
   <dialog id="admin-dialog" class="admin-dialog">
     <button class="dialog-close" id="close-admin" type="button" aria-label="닫기">×</button>
     <h2>개발자 관리자</h2>
@@ -215,6 +222,6 @@
   </dialog>
   <iframe id="bgm-player" class="bgm-player" title="게임 배경음악" allow="autoplay"></iframe>
   <script src="sprite-frames.js?v=20260929-sprites3"></script>
-  <script src="game.js?v=20261006-reset1"></script>
+  <script src="game.js?v=20261009-chat1"></script>
 </body>
 </html>
