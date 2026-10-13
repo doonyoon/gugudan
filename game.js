@@ -134,6 +134,7 @@ const STAGE_THEMES = [
 ];
 const STAGE_BACKGROUNDS=Array.from({length:20},(_,index)=>`assets/backgrounds/stage-${String(index+1).padStart(2,'0')}.png`);
 const stageBackgroundImages=STAGE_BACKGROUNDS.map(source=>{const image=new Image();image.src=source;return image;});
+const baseImages={player:new Image(),enemy:new Image()};baseImages.player.src='assets/backgrounds/player-castle.png';baseImages.enemy.src='assets/backgrounds/enemy-castle.png';
 const BASIC_UNITS = ['runner','tank','fighter','mage'];
 const RARITY_RANK = {'기본':0,'노멀':1,'EX':2,'레어':3,'슈퍼 레어':4,'울트라 슈퍼 레어':5,'레전드 레어':6};
 const GACHA_POOLS = {
@@ -569,7 +570,7 @@ function drawBackground(w,h){
   if(theme.kind==='space'){ctx.fillStyle='#8176c5';for(let x=15;x<w;x+=115){ctx.beginPath();ctx.ellipse(x,ground-8,38,14,-.2,0,7);ctx.fill();}}
   ctx.fillStyle=theme.ground;ctx.fillRect(0,ground,w,h-ground);ctx.fillStyle=theme.hill;for(let x=0;x<w;x+=55){ctx.beginPath();ctx.arc(x,ground+10,42,Math.PI,0);ctx.fill();}
 }
-function drawBase(x,y,cat,hp){ctx.save();ctx.translate(x,y);ctx.fillStyle=cat?'#e9e3cc':'#443b55';ctx.strokeStyle='#151827';ctx.lineWidth=4;ctx.fillRect(-38,-88,76,88);ctx.strokeRect(-38,-88,76,88);ctx.fillStyle=cat?'#ffd447':'#ef476f';ctx.beginPath();ctx.moveTo(-47,-88);ctx.lineTo(0,-125);ctx.lineTo(47,-88);ctx.fill();ctx.stroke();ctx.fillStyle='#17192a';ctx.fillRect(-12,-35,24,35);ctx.fillStyle='#fff';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.fillText(cat?'ฅ':'☠',0,-56);if(hp<=0){ctx.rotate(.12);ctx.globalAlpha=.5;}ctx.restore();}
+function drawBase(x,y,cat,hp){ctx.save();ctx.translate(x,y);if(hp<=0){ctx.rotate(.12);ctx.globalAlpha=.5;}const image=cat?baseImages.player:baseImages.enemy;if(image.complete&&image.naturalWidth){const width=Math.min(180,(canvas.viewWidth||800)*.22),height=width*(image.naturalHeight/image.naturalWidth);ctx.drawImage(image,-width/2,-height,width,height);ctx.restore();return;}ctx.fillStyle=cat?'#e9e3cc':'#443b55';ctx.strokeStyle='#151827';ctx.lineWidth=4;ctx.fillRect(-38,-88,76,88);ctx.strokeRect(-38,-88,76,88);ctx.fillStyle=cat?'#ffd447':'#ef476f';ctx.beginPath();ctx.moveTo(-47,-88);ctx.lineTo(0,-125);ctx.lineTo(47,-88);ctx.fill();ctx.stroke();ctx.fillStyle='#17192a';ctx.fillRect(-12,-35,24,35);ctx.fillStyle='#fff';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.fillText(cat?'ฅ':'☠',0,-56);ctx.restore();}
 function drawUnit(u){
   ctx.save();ctx.translate(u.x,u.y);if(u.hit)ctx.globalAlpha=.55;
   const sprite=spriteImages[u.unitType];if(sprite?.complete&&sprite.naturalWidth){drawSpriteUnit(u,sprite);healthMini(u);ctx.restore();return;}
