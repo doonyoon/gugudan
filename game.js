@@ -191,6 +191,9 @@ $('#gacha-sound-toggle').addEventListener('click',toggleSound);
 $('#gacha-button').addEventListener('click', openGacha);
 $('#ranking-button').addEventListener('click', openRanking);
 $('#close-ranking').addEventListener('click', () => $('#ranking-dialog').close());
+$('#friends-button').addEventListener('click', openFriends);
+$('#close-friends').addEventListener('click', () => $('#friends-dialog').close());
+$('#friend-request-form').addEventListener('submit', sendFriendRequest);
 $('#chat-button').addEventListener('click', openChat);
 $('#close-chat').addEventListener('click', closeChat);
 $('#chat-dialog').addEventListener('close', closeChat);
@@ -304,6 +307,27 @@ function renderSuggestions(items,developer){
 async function submitSuggestion(event){event.preventDefault();const content=$('#suggestion-content').value.trim(),message=$('#suggestion-message');message.className='';if(content.length<2){message.textContent='내용을 2자 이상 입력해 주세요.';return;}message.textContent='보내는 중...';try{await apiRequest('/api/suggestions',{method:'POST',body:JSON.stringify({content})});message.textContent='건의가 전달되었습니다. 답변이 등록되면 여기에서 확인할 수 있어요.';message.className='success';$('#suggestion-content').value='';const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],false);}catch(error){message.textContent=error.message;}}
 async function replySuggestion(event){event.preventDefault();const form=event.currentTarget,textarea=form.querySelector('textarea'),response=textarea.value.trim();if(!response)return;const button=form.querySelector('button');button.disabled=true;try{await apiRequest(`/api/suggestions/${form.dataset.suggestionId}/reply`,{method:'PUT',body:JSON.stringify({response})});const data=await apiRequest('/api/suggestions');renderSuggestions(data.suggestions||[],true);}catch(error){button.disabled=false;window.alert(error.message);}}
 async function openRanking(){$('#ranking-list').innerHTML='<p>랭킹을 불러오는 중...</p>';$('#ranking-dialog').showModal();try{const data=await apiRequest('/api/rankings'),medals=['🥇','🥈','🥉'];$('#ranking-list').innerHTML=(data.rankings||[]).length?data.rankings.map(player=>`<article class="ranking-item"><b>${medals[player.rank-1]||player.rank}</b><strong>${escapeHtml(player.id)}</strong><small>${Number(player.gold).toLocaleString()} 골드<br>최고 스테이지 ${Number(player.highestStage)+1}</small></article>`).join(''):'<p>아직 랭킹에 등록된 회원이 없습니다.</p>';}catch(error){$('#ranking-list').innerHTML=`<p>랭킹을 불러오지 못했습니다: ${escapeHtml(error.message)}</p>`;}}
+async function openFriends(){
+  $('#friend-message').textContent='';$('#friend-message').className='';$('#friend-request-list').innerHTML='<p>불러오는 중...</p>';$('#friend-list').innerHTML='<p>불러오는 중...</p>';$('#friends-dialog').showModal();await loadFriends();
+}
+async function loadFriends(){
+  try{const data=await apiRequest('/api/friends');renderFriends(data);}catch(error){$('#friend-request-list').innerHTML=`<p>${escapeHtml(error.message)}</p>`;$('#friend-list').innerHTML='';}
+}
+function renderFriends(data){
+  const requests=data.requests||[],friends=data.friends||[];
+  $('#friend-request-list').innerHTML=requests.length?requests.map(request=>`<article class="friend-row"><strong>${escapeHtml(request.sender_id)}</strong><small>${displayDate(request.created_at)}</small><button type="button" data-friend-request="${request.id}" data-friend-action="accept">수락</button><button type="button" class="friend-reject" data-friend-request="${request.id}" data-friend-action="reject">거절</button></article>`).join(''):'<p>받은 친구 요청이 없습니다.</p>';
+  $('#friend-list').innerHTML=friends.length?friends.map(friend=>`<article class="friend-row"><strong>${escapeHtml(friend.id)}</strong><small>${displayDate(friend.created_at)}부터 친구</small><button type="button" class="friend-remove" data-friend-id="${escapeHtml(friend.id)}">삭제</button></article>`).join(''):'<p>아직 친구가 없습니다.</p>';
+  document.querySelectorAll('[data-friend-request]').forEach(button=>button.addEventListener('click',respondFriendRequest));document.querySelectorAll('[data-friend-id]').forEach(button=>button.addEventListener('click',removeFriend));
+}
+async function sendFriendRequest(event){
+  event.preventDefault();const input=$('#friend-id'),recipientId=input.value.trim(),message=$('#friend-message'),button=event.currentTarget.querySelector('button');if(!recipientId)return;button.disabled=true;message.className='';message.textContent='요청을 보내는 중...';try{await apiRequest('/api/friends/requests',{method:'POST',body:JSON.stringify({recipientId})});input.value='';message.textContent='친구 요청을 보냈습니다.';message.className='success';await loadFriends();}catch(error){message.textContent=error.message;}finally{button.disabled=false;}
+}
+async function respondFriendRequest(event){
+  const button=event.currentTarget;button.disabled=true;try{await apiRequest(`/api/friends/requests/${button.dataset.friendRequest}/${button.dataset.friendAction}`,{method:'POST'});await loadFriends();}catch(error){window.alert(error.message);button.disabled=false;}
+}
+async function removeFriend(event){
+  const friendId=event.currentTarget.dataset.friendId;if(!window.confirm(`${friendId} 님을 친구 목록에서 삭제할까요?`))return;try{await apiRequest(`/api/friends/${encodeURIComponent(friendId)}`,{method:'DELETE'});await loadFriends();}catch(error){window.alert(error.message);}
+}
 let chatPeer='',chatPollTimer;
 async function openChat(){
   $('#chat-contact-list').innerHTML='<p>회원 목록을 불러오는 중...</p>';$('#chat-message-list').innerHTML='';$('#chat-peer-title').textContent='대화 상대를 선택하세요';$('#chat-dialog').showModal();

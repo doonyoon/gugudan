@@ -6,7 +6,7 @@ const canonicalUrl='https://doonyoon.github.io/gugudan/',developerId='doonyoon',
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8','.png':'image/png'};
 let store;
 function json(response,status,payload){response.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});response.end(JSON.stringify(payload));}
-function allowApiOrigin(request,response){const origin=String(request.headers.origin||''),allowed=origin==='https://doonyoon.github.io'||/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);if(allowed){response.setHeader('Access-Control-Allow-Origin',origin);response.setHeader('Vary','Origin');response.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');response.setHeader('Access-Control-Allow-Methods','GET, POST, PUT, OPTIONS');}}
+function allowApiOrigin(request,response){const origin=String(request.headers.origin||''),allowed=origin==='https://doonyoon.github.io'||/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);if(allowed){response.setHeader('Access-Control-Allow-Origin',origin);response.setHeader('Vary','Origin');response.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');response.setHeader('Access-Control-Allow-Methods','GET, POST, PUT, DELETE, OPTIONS');}}
 function readJson(request){return new Promise((resolve,reject)=>{let body='';request.on('data',chunk=>{body+=chunk;if(body.length>150000){reject(new Error('too_large'));request.destroy();}});request.on('end',()=>{try{resolve(body?JSON.parse(body):{});}catch{reject(new Error('invalid_json'));}});request.on('error',reject);});}
 function validId(id){return typeof id==='string'&&/^[A-Za-z0-9가-힣_]{3,16}$/.test(id);}
 function tokenFrom(request){return String(request.headers.authorization||'').replace(/^Bearer\s+/i,'');}
@@ -77,6 +77,31 @@ async function api(request,response,pathname){
       if(!normalized)return json(response,400,{error:'코드를 입력해 주세요.'});
       const reward=await store.redeemCoupon(id,normalized);return json(response,200,reward);
     }
+    if(request.method==='GET'&&pathname==='/api/friends'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      return json(response,200,await store.listFriends(id));
+    }
+    if(request.method==='POST'&&pathname==='/api/friends/requests'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      const {recipientId}=await readJson(request),recipient=typeof recipientId==='string'?recipientId.trim():'';
+      if(!validId(recipient)||recipient===id)return json(response,400,{error:'올바른 친구 아이디를 입력해 주세요.'});
+      if(!await store.get(recipient))return json(response,404,{error:'해당 회원을 찾을 수 없습니다.'});
+      const relations=await store.listFriends(id);if(relations.friends.some(friend=>friend.id===recipient))return json(response,409,{error:'이미 친구인 회원입니다.'});
+      return json(response,201,{request:await store.sendFriendRequest(id,recipient)});
+    }
+    const friendRequestMatch=pathname.match(/^\/api\/friends\/requests\/(\d+)\/(accept|reject)$/);
+    if(request.method==='POST'&&friendRequestMatch){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      if(friendRequestMatch[2]==='accept')return json(response,200,{request:await store.acceptFriendRequest(friendRequestMatch[1],id)});
+      if(!await store.rejectFriendRequest(friendRequestMatch[1],id))return json(response,404,{error:'친구 요청을 찾을 수 없습니다.'});
+      return json(response,200,{rejected:true});
+    }
+    const friendMatch=pathname.match(/^\/api\/friends\/([A-Za-z0-9가-힣_]{3,16})$/);
+    if(request.method==='DELETE'&&friendMatch){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      if(!await store.removeFriend(id,friendMatch[1]))return json(response,404,{error:'친구 관계를 찾을 수 없습니다.'});
+      return json(response,200,{deleted:true});
+    }
     if(request.method==='GET'&&pathname==='/api/chat/contacts'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});return json(response,200,{contacts:await store.listChatContacts(id,developerId)});
     }
@@ -130,7 +155,7 @@ async function api(request,response,pathname){
       return json(response,200,{suggestion});
     }
     return json(response,404,{error:'API를 찾을 수 없습니다.'});
-  }catch(error){console.error(error);const messages={23505:'이미 사용 중인 아이디입니다.',coupon_not_found:'존재하지 않거나 종료된 코드예요.',coupon_used:'이미 사용한 코드예요.',account_not_found:'계정을 찾을 수 없습니다.'};return json(response,messages[error.code]?400:500,{error:messages[error.code]||'서버 저장 중 오류가 발생했습니다.'});}
+  }catch(error){console.error(error);if(error.code==='friend_request_exists')return json(response,409,{error:'이미 대기 중인 친구 요청이 있습니다.'});if(error.code==='friend_request_not_found')return json(response,404,{error:'친구 요청을 찾을 수 없습니다.'});const messages={23505:'이미 사용 중인 아이디입니다.',coupon_not_found:'존재하지 않거나 종료된 코드예요.',coupon_used:'이미 사용한 코드예요.',account_not_found:'계정을 찾을 수 없습니다.'};return json(response,messages[error.code]?400:500,{error:messages[error.code]||'서버 저장 중 오류가 발생했습니다.'});}
 }
 function handle(request,response){
   const pathname=decodeURIComponent(request.url.split('?')[0]);response.setHeader('X-Content-Type-Options','nosniff');response.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
