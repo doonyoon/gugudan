@@ -52,6 +52,10 @@ async function api(request,response,pathname){
       const accounts=await store.listAccounts();
       return json(response,200,{accounts:accounts.map(account=>({id:account.id,gold:Number(account.progress?.gold||0),highestStage:Number(account.progress?.highestStage||0),createdAt:account.created_at,updatedAt:account.updated_at||account.created_at}))});
     }
+    if(request.method==='GET'&&pathname==='/api/rankings'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      const rankings=await store.listRankings();return json(response,200,{rankings:rankings.map((account,index)=>({rank:index+1,id:account.id,gold:Number(account.gold||0),highestStage:Number(account.highest_stage??account.highestStage??0)}))});
+    }
     if(request.method==='GET'&&pathname==='/api/admin/coupons'){
       const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 선물 코드를 관리할 수 있습니다.'});
       return json(response,200,{coupons:await store.listCoupons()});
