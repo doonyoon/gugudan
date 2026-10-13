@@ -132,6 +132,8 @@ const STAGE_THEMES = [
   { sky1:'#130d35',sky2:'#7c3bb3',ground:'#322755',hill:'#20173e',accent:'#e4a8ff',kind:'storm' },
   { sky1:'#03040f',sky2:'#18255d',ground:'#242342',hill:'#111126',accent:'#ffe875',kind:'space' }
 ];
+const STAGE_BACKGROUNDS=Array.from({length:20},(_,index)=>`assets/backgrounds/stage-${String(index+1).padStart(2,'0')}.png`);
+const stageBackgroundImages=STAGE_BACKGROUNDS.map(source=>{const image=new Image();image.src=source;return image;});
 const BASIC_UNITS = ['runner','tank','fighter','mage'];
 const RARITY_RANK = {'기본':0,'노멀':1,'EX':2,'레어':3,'슈퍼 레어':4,'울트라 슈퍼 레어':5,'레전드 레어':6};
 const GACHA_POOLS = {
@@ -547,6 +549,13 @@ function groundY(){return (canvas.viewHeight||400)*.77;}
 function draw(){ const w=canvas.viewWidth||800,h=canvas.viewHeight||400;ctx.clearRect(0,0,w,h);ctx.save();if(game?.shake)ctx.translate((Math.random()-.5)*game.shake,(Math.random()-.5)*game.shake);drawBackground(w,h);drawBase(55,groundY(),true,game?.playerHp??2500);drawBase(w-55,groundY(),false,game?.enemyHp??2500);if(game){game.units.forEach(drawUnit);game.enemies.forEach(drawEnemy);game.projectiles.forEach(drawProjectile);game.particles.forEach(drawParticle);if(game.bossRageWarning>0){ctx.fillStyle='#ff394f';ctx.font=`${Math.min(38,w/16)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(`${game.bossName} 광폭화!`,w/2,70);}else if(game.bossWarning>0){ctx.fillStyle=game.bossDefeated?'#ffe56e':'#ff64db';ctx.font=`${Math.min(34,w/18)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(game.bossDefeated?`${game.bossName} 격파!`:`${game.bossName} 강림!`,w/2,70);}}ctx.restore(); }
 function drawBackground(w,h){
   const theme=STAGE_THEMES[selectedStage]||STAGE_THEMES[0],ground=groundY();
+  const image=stageBackgroundImages[selectedStage];
+  if(image?.complete&&image.naturalWidth){
+    const scale=Math.max(w/image.naturalWidth,h/image.naturalHeight),width=image.naturalWidth*scale,height=image.naturalHeight*scale;
+    ctx.drawImage(image,(w-width)/2,(h-height)/2,width,height);
+    const shade=ctx.createLinearGradient(0,h*.55,0,h);shade.addColorStop(0,'rgba(8,11,28,0)');shade.addColorStop(1,'rgba(8,11,28,.28)');ctx.fillStyle=shade;ctx.fillRect(0,0,w,h);
+    return;
+  }
   const sky=ctx.createLinearGradient(0,0,0,ground);sky.addColorStop(0,theme.sky1);sky.addColorStop(1,theme.sky2);ctx.fillStyle=sky;ctx.fillRect(0,0,w,ground);
   ctx.fillStyle=theme.accent;ctx.globalAlpha=.85;ctx.beginPath();ctx.arc(w*.78,h*.2,theme.kind==='moon'?24:31,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
   if(['space','twilight','moon'].includes(theme.kind)){ctx.fillStyle='#fff';for(let i=0;i<26;i++){const x=(i*83)%w,y=18+(i*47)%(ground*.62),r=i%5===0?2:1;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();}}
