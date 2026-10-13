@@ -44,6 +44,12 @@
     </form>
     <button id="auth-sound-button" class="auth-sound-button" type="button" aria-label="배경음악 켜기">🔇 BGM</button>
   </section>
+  <dialog id="delete-account-dialog" class="delete-account-dialog">
+    <button class="dialog-close" id="close-delete-account" type="button" aria-label="닫기">×</button>
+    <h2>계정 삭제</h2>
+    <p>삭제하면 진행도, 커뮤니티 글·댓글, 1:1 채팅이 영구 삭제됩니다. 복구할 수 없습니다.</p>
+    <form id="delete-account-form" class="delete-account-form"><label>현재 비밀번호<input id="delete-account-password" type="password" autocomplete="current-password" required></label><label class="delete-confirm"><input id="delete-account-confirm" type="checkbox" required> 위 내용을 확인했고 계정을 영구 삭제합니다.</label><button type="submit">계정 영구 삭제</button><small id="delete-account-message" role="status"></small></form>
+  </dialog>
   <dialog id="password-reset-dialog" class="password-reset-dialog">
     <button class="dialog-close" id="close-password-reset" type="button" aria-label="닫기">×</button>
     <h2>비밀번호 재설정</h2>
@@ -61,6 +67,7 @@
       <div class="top-actions">
         <span class="account-name" id="account-name"></span>
         <button id="logout-button" class="icon-button logout-button" type="button">로그아웃</button>
+        <button id="delete-account-button" class="icon-button delete-account-button" type="button" aria-label="계정 삭제">탈퇴</button>
         <div class="gold-display" title="보유 골드"><span>🪙</span><strong id="gold">0</strong></div>
         <button id="lineup-button" class="icon-button lineup-icon" type="button" aria-label="출전 슬롯 편성">편성</button>
         <button id="gacha-button" class="icon-button gacha-icon" type="button" aria-label="캐릭터 뽑기">🎁</button>
@@ -229,6 +236,6 @@
   </dialog>
   <iframe id="bgm-player" class="bgm-player" title="게임 배경음악" allow="autoplay"></iframe>
   <script src="sprite-frames.js?v=20260929-sprites3"></script>
-  <script src="game.js?v=20261013-ranking1"></script>
+  <script src="game.js?v=20261013-delete-account1"></script>
 </body>
 </html>

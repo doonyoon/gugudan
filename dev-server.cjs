@@ -32,6 +32,9 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,200,{saved:true});const {progress}=await readJson(request);return json(response,await store.saveProgress(id,sanitizeProgress(progress))?200:404,{saved:true});
     }
     if(request.method==='POST'&&pathname==='/api/logout')return json(response,200,{ok:true});
+    if(request.method==='DELETE'&&pathname==='/api/account'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,403,{error:'개발자 계정은 여기서 삭제할 수 없습니다.'});const {password}=await readJson(request),account=await store.get(id);if(!account||typeof password!=='string'||account.password_hash!==await passwordHash(password,account.salt))return json(response,401,{error:'비밀번호가 맞지 않습니다.'});return json(response,await store.deleteAccount(id)?200:404,{deleted:true});
+    }
     if(request.method==='POST'&&pathname==='/api/password-reset/request'){
       const {id}=await readJson(request);if(typeof id==='string'&&validId(id))await store.requestPasswordReset(id);
       return json(response,200,{message:'계정이 존재하면 개발자 확인 요청이 전달됩니다.'});
