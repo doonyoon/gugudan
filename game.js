@@ -152,7 +152,7 @@ const AUTH_REPAIR_KEY = 'cat-fortress-account-repair-v2';
 const DEVELOPER_ID = 'doonyoon';
 const DEVELOPER_PASSWORD = 'kk45537606';
 const API_BASE = location.hostname.endsWith('github.io') ? 'https://goyangi-seongchaejeon.onrender.com' : '';
-const LOGIN_BGM_ID='HdTkXL6BTSM',LOBBY_BGM_ID='xM911Syufvg',STAGE_ONE_BGM_ID='bnTiOKWAyQM',FINAL_STAGE_BGM_ID='KSDa6iyrmkM';
+const LOGIN_BGM_ID='HdTkXL6BTSM',LOBBY_BGM_ID='xM911Syufvg',STAGE_ONE_BGM_ID='bnTiOKWAyQM',FINAL_STAGE_BGM_ID='local-stage-20';
 const MAX_DEPLOYED_CATS=30;
 repairDuplicatedAccountSaves();
 let authToken=localStorage.getItem(AUTH_SESSION_KEY)||'',activeUser='';
@@ -262,10 +262,16 @@ function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하�
 function openDeleteAccount(){if(isDeveloperAccount()){window.alert('개발자 계정은 게임 안에서 삭제할 수 없습니다.');return;}$('#delete-account-form').reset();$('#delete-account-message').textContent='';$('#delete-account-dialog').showModal();}
 async function deleteAccount(event){event.preventDefault();const password=$('#delete-account-password').value,message=$('#delete-account-message');if(!$('#delete-account-confirm').checked)return;if(!window.confirm('정말로 계정을 삭제할까요? 이 작업은 되돌릴 수 없습니다.'))return;message.textContent='계정을 삭제하는 중...';try{await apiRequest('/api/account',{method:'DELETE',body:JSON.stringify({password})});localStorage.removeItem(progressKey());window.alert('계정이 삭제되었습니다.');logoutAccount();}catch(error){message.textContent=error.message;}}
 async function restoreSession(){if(!authToken)return;if(authToken.startsWith('local:')){const id=authToken.slice(6);if(id===DEVELOPER_ID||loadAccounts()[id]){activateAccount(id,authToken,localProgressFor(id));return;}}try{const data=await apiRequest('/api/session');activateAccount(data.id,authToken,data.progress);}catch{authToken='';localStorage.removeItem(AUTH_SESSION_KEY);setAuthView();}}
-function setBgmTrack(videoId){if(bgmTrack===videoId)return;bgmTrack=videoId;const mute=soundOn?0:1;$('#bgm-player').src=`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${mute}&loop=1&playlist=${videoId}&controls=0&start=1&enablejsapi=1`;}
+function setBgmTrack(track){
+  if(bgmTrack===track){if(track===FINAL_STAGE_BGM_ID)syncFinalStageMusic();return;}
+  bgmTrack=track;const finalMusic=$('#final-stage-bgm');finalMusic.pause();finalMusic.currentTime=0;
+  if(track===FINAL_STAGE_BGM_ID){$('#bgm-player').src='';syncFinalStageMusic();return;}
+  const mute=soundOn?0:1;$('#bgm-player').src=`https://www.youtube.com/embed/${track}?autoplay=1&mute=${mute}&loop=1&playlist=${track}&controls=0&start=1&enablejsapi=1`;
+}
+function syncFinalStageMusic(){const finalMusic=$('#final-stage-bgm');if(bgmTrack!==FINAL_STAGE_BGM_ID)return;if(soundOn)finalMusic.play().catch(()=>{});else finalMusic.pause();}
 function syncSoundButtons(){const icon=soundOn?'🔊':'🔇';$('#sound-button').textContent=icon;$('#sound-button').ariaLabel=soundOn?'소리 끄기':'소리 켜기';$('#auth-sound-button').textContent=`${icon} BGM`;$('#auth-sound-button').ariaLabel=soundOn?'배경음악 끄기':'배경음악 켜기';$('#gacha-sound-toggle').textContent=icon;$('#gacha-sound-toggle').ariaLabel=soundOn?'소리 끄기':'소리 켜기';}
 function playerCommand(player,command){player?.contentWindow?.postMessage(JSON.stringify({event:'command',func:command,args:[]}), '*');}
-function toggleSound(){soundOn=!soundOn;syncSoundButtons();playerCommand($('#bgm-player'),soundOn?'unMute':'mute');if(soundOn){initAudio();if(gachaBusy&&!gachaGain)playGachaSound(Math.max(0,(performance.now()-gachaStartedAt)/1000));}if(gachaGain&&audio)gachaGain.gain.setTargetAtTime(soundOn?gachaVolume:0,audio.currentTime,.025);}
+function toggleSound(){soundOn=!soundOn;syncSoundButtons();playerCommand($('#bgm-player'),soundOn?'unMute':'mute');syncFinalStageMusic();if(soundOn){initAudio();if(gachaBusy&&!gachaGain)playGachaSound(Math.max(0,(performance.now()-gachaStartedAt)/1000));}if(gachaGain&&audio)gachaGain.gain.setTargetAtTime(soundOn?gachaVolume:0,audio.currentTime,.025);}
 // One local audio clock for the crank, electrical rise, opening impact and fanfare.
 function gachaNote(at,duration,from,to,type='sine',volume=.1){
   if(!audio||!gachaGain)return;
