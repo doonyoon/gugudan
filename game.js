@@ -170,7 +170,7 @@ function createGame() {
   const settings = STAGES[selectedStage];
   const money=300+selectedStage*50,maxMoney=1300+selectedStage*110,income=55+selectedStage*4,playerHp=3600+selectedStage*250;
   const bossType=BOSS_STAGES[selectedStage]||null;
-  return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, bossType, bossName:bossType?ENEMY_TYPES[bossType].label:'', bossSpawned:false, bossDefeated:!bossType, bossWarning:0, bossRageWarning:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), shake:0, result:null };
+  return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, bossType, bossName:bossType?ENEMY_TYPES[bossType].label:'', bossSpawned:false, bossDefeated:!bossType, bossWarning:0, bossRageWarning:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), autoSummon:Object.fromEntries(progress.loadout.map(type=>[type,false])), shake:0, result:null };
 }
 
 function resizeCanvas() {
@@ -376,9 +376,10 @@ function renderMeta(){
   renderDeck();renderCollection();
 }
 function renderDeck(){
-  $('#unit-deck').innerHTML=progress.loadout.map(type=>{const u=UNIT_TYPES[type];return `<button class="unit-card" data-unit="${type}" type="button"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i>${unitPortrait(type)}<strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
-  unitButtons=[...document.querySelectorAll('.unit-card')];unitButtons.forEach(b=>b.addEventListener('click',()=>summon(b.dataset.unit)));
+  $('#unit-deck').innerHTML=progress.loadout.map(type=>{const u=UNIT_TYPES[type],auto=Boolean(game?.running&&game.autoSummon?.[type]);return `<button class="unit-card ${auto?'auto-summon':''}" data-unit="${type}" type="button" title="클릭: 소환 · 우클릭: 자동 소환 켜기/끄기" aria-pressed="${auto}"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i>${unitPortrait(type)}<strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
+  unitButtons=[...document.querySelectorAll('.unit-card')];unitButtons.forEach(b=>{b.addEventListener('click',()=>summon(b.dataset.unit));b.addEventListener('contextmenu',toggleAutoSummon);});
 }
+function toggleAutoSummon(event){event.preventDefault();if(!game?.running)return;const button=event.currentTarget,type=button.dataset.unit;game.autoSummon[type]=!game.autoSummon[type];button.classList.toggle('auto-summon',game.autoSummon[type]);button.setAttribute('aria-pressed',String(game.autoSummon[type]));playTone(game.autoSummon[type]?660:220,.08,'triangle',.06);}
 function unitIcon(type){return UNIT_TYPES[type].icon||({runner:'ฅ',tank:'◉',fighter:'⚔',mage:'✦'}[type]);}
 function unitPortrait(type){
   const file=CHARACTER_SPRITES[type],sheet=SPRITE_FRAMES[type];
@@ -454,6 +455,7 @@ function loop(now) {
 function update(dt) {
   game.time+=dt;game.bossWarning=Math.max(0,game.bossWarning-dt);game.bossRageWarning=Math.max(0,game.bossRageWarning-dt); game.money=Math.min(game.maxMoney,game.money+game.income*dt); game.enemyTimer-=dt;
   Object.keys(game.cooldowns).forEach(k=>game.cooldowns[k]=Math.max(0,game.cooldowns[k]-dt));
+  Object.keys(game.autoSummon).filter(type=>game.autoSummon[type]).forEach(type=>summon(type));
   if(game.enemyTimer<=0){ spawnEnemy(); game.enemyTimer=game.enemySpawn*(.88+Math.random()*.34)*Math.max(.78,1-game.time/600); }
   updateArmy(game.units,game.enemies,1,dt); updateArmy(game.enemies,game.units,-1,dt);
   updateProjectiles(dt);
@@ -540,7 +542,7 @@ function upgradeUnit(type){
   renderTraining();playJingle([440,554,659],.07);
 }
 function finish(win){
-  game.running=false;game.result=win;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');let reward=0;
+  game.running=false;game.result=win;game.autoSummon={};renderDeck();$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');let reward=0;
   if(win){reward=STAGES[selectedStage].reward;progress.gold+=reward;if(!progress.cleared.includes(selectedStage))progress.cleared.push(selectedStage);progress.highestStage=Math.max(progress.highestStage,Math.min(STAGES.length-1,selectedStage+1));saveProgress();}
   const box=$('#battle-message');box.innerHTML=`<span>${win?'승리!':'패배...'}</span>${win?`<small>+${reward} 골드 🪙</small>`:''}<button class="main-button" id="retry-button">스테이지 선택</button>`;box.classList.remove('hidden');
   $('#retry-button').onclick=()=>{$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setBgmTrack(LOBBY_BGM_ID);renderMeta();};playJingle(win?[523,659,784,1047]:[330,247,196],.18);

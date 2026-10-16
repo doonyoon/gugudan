@@ -92,6 +92,7 @@ select { padding:9px 12px; border:2px solid #6c7397; border-radius:10px; backgro
 .unit-deck { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(118px,1fr); gap:9px; overflow-x:auto; padding-bottom:5px; scrollbar-color:#596081 #171a30; }
 .unit-card { position:relative; min-height:105px; overflow:hidden; padding:8px 7px; border:2px solid #4d5478; border-radius:15px; background:linear-gradient(145deg,#2b304d,#181b30); color:#fff; cursor:pointer; box-shadow:0 5px 0 #070912; }
 .unit-card:active:not(:disabled) { transform:translateY(3px); box-shadow:0 2px 0 #070912; }
+.unit-card.auto-summon { border-color:#55d6be; background:linear-gradient(145deg,#254f4c,#182d32); box-shadow:0 0 0 2px rgba(85,214,190,.25),0 5px 0 #070912; }.unit-card.auto-summon::after { content:'AUTO'; position:absolute; top:5px; right:5px; z-index:4; padding:2px 4px; border-radius:4px; background:#55d6be; color:#10232a; font-size:.55rem; font-weight:900; }
 .unit-card:disabled { filter:grayscale(.8); opacity:.5; }
 .unit-card strong,.unit-card small,.unit-card em { display:block; position:relative; z-index:2; }
 .unit-card sup { padding:1px 3px; border-radius:4px; background:#59617f; font-size:.55rem; }
