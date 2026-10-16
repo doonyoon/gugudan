@@ -82,6 +82,7 @@ const ENEMY_TYPES = {
   godOverlord: { hp: 30000, damage: 800, speed: 11, range: 220, rate: 1.05, reward: 6000, color: '#151b5c', armor:115, rageDamage:1.55, rageSpeed:1.45, ranged: true, boss: true, label:'신왕 제로스' }
 };
 const BOSS_STAGES = {9:'overlord',19:'godOverlord'};
+const FINAL_BOSS_SPAWN_SECONDS = 48;
 const ENEMY_STAGE_POOLS = [
   ['pup'],['pup','bird'],['pup','bird','snake'],['bird','snake','boar'],['snake','boar','gorilla'],
   ['snake','boar','gorilla'],['boar','gorilla','ghost'],['gorilla','rhino','ghost'],['rhino','ghost','mech'],['rhino','ghost','demon'],
@@ -463,6 +464,7 @@ function update(dt) {
   game.time+=dt;game.bossWarning=Math.max(0,game.bossWarning-dt);game.bossRageWarning=Math.max(0,game.bossRageWarning-dt); game.money=Math.min(game.maxMoney,game.money+game.income*dt); game.enemyTimer-=dt;
   Object.keys(game.cooldowns).forEach(k=>game.cooldowns[k]=Math.max(0,game.cooldowns[k]-dt));
   Object.keys(game.autoSummon).filter(type=>game.autoSummon[type]).forEach(type=>summon(type));
+  if(selectedStage===STAGES.length-1&&game.bossType&&!game.bossSpawned&&game.time>=FINAL_BOSS_SPAWN_SECONDS)spawnEnemy(game.bossType);
   if(game.enemyTimer<=0){ spawnEnemy(); game.enemyTimer=game.enemySpawn*(.88+Math.random()*.34)*Math.max(.78,1-game.time/600); }
   updateArmy(game.units,game.enemies,1,dt); updateArmy(game.enemies,game.units,-1,dt);
   updateProjectiles(dt);
@@ -527,11 +529,12 @@ function removeDead(){
   game.units=game.units.filter(e=>{if(e.hp>0)return true;burst(e.x,e.y,'#dff6ff',8);return false;});
 }
 function summon(type){ if(!game?.running||game.units.length>=MAX_DEPLOYED_CATS)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,training=game.training[type]||0,boost=(1+(level-1)*.08)*(1+training*.15);if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown;game.units.push({...u,unitType:type,id:crypto.randomUUID(),side:'cat',x:82+Math.random()*8,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost),heal:Math.round((u.heal||0)*boost)});playTone(440,.1,'triangle',.08); }
-function spawnEnemy(){
+function spawnEnemy(forcedType=null){
   const pool=ENEMY_STAGE_POOLS[selectedStage];game.spawnCount++;
   const normalPool=selectedStage>=4&&pool.length>1?pool.slice(0,-1):pool;
-  let type=normalPool[Math.floor(Math.random()*normalPool.length)];
-  if(game.bossType&&game.spawnCount===10&&!game.bossSpawned){type=game.bossType;game.bossSpawned=true;game.bossWarning=3;playJingle([196,165,131,98],.16);}
+  let type=forcedType||normalPool[Math.floor(Math.random()*normalPool.length)];
+  if(forcedType===game.bossType&&!game.bossSpawned){game.bossSpawned=true;game.bossWarning=3;playJingle([196,165,131,98],.16);}
+  else if(game.bossType&&selectedStage!==STAGES.length-1&&game.spawnCount===10&&!game.bossSpawned){type=game.bossType;game.bossSpawned=true;game.bossWarning=3;playJingle([196,165,131,98],.16);}
   else if(selectedStage>=4&&game.spawnCount%10===0)type=pool[pool.length-1];
   const e=ENEMY_TYPES[type],waveBoost=1+Math.min(.2,game.time/360);
   game.enemies.push({...e,id:crypto.randomUUID(),side:'enemy',kind:type,x:(canvas.viewWidth||800)-82,y:groundY(),attack:.4,hp:Math.round(e.hp*game.enemyScale*waveBoost),maxHp:Math.round(e.hp*game.enemyScale*waveBoost),damage:Math.round(e.damage*game.enemyScale*waveBoost),rageTriggered:false});
