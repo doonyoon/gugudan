@@ -158,6 +158,7 @@ const LOCAL_BGM_SOURCES={[STAGE_TEN_BGM_ID]:'assets/audio/stage-10-energy-drink.
 const MAX_DEPLOYED_CATS=30;
 repairDuplicatedAccountSaves();
 let authToken=localStorage.getItem(AUTH_SESSION_KEY)||'',activeUser='';
+let notificationTimer=null;
 let progress = loadProgress();
 let selectedStage = Math.min(progress.highestStage, STAGES.length-1);
 let selectedLineupSlot = 0;
@@ -199,6 +200,8 @@ $('#close-ranking').addEventListener('click', () => $('#ranking-dialog').close()
 $('#friends-button').addEventListener('click', openFriends);
 $('#close-friends').addEventListener('click', () => $('#friends-dialog').close());
 $('#friend-request-form').addEventListener('submit', sendFriendRequest);
+$('#notification-button').addEventListener('click', openNotifications);
+$('#close-notification').addEventListener('click', () => $('#notification-dialog').close());
 $('#chat-button').addEventListener('click', openChat);
 $('#close-chat').addEventListener('click', closeChat);
 $('#chat-dialog').addEventListener('close', closeChat);
@@ -259,8 +262,8 @@ async function loginAccount(event){event.preventDefault();const {id,password,mes
 async function resetPassword(){const id=$('#auth-id').value.trim();$('#password-reset-id').value=id;$('#password-reset-message').textContent='';$('#password-reset-dialog').showModal();}
 async function requestPasswordReset(event){event.preventDefault();const id=$('#password-reset-id').value.trim(),message=$('#password-reset-message');message.className='';try{const data=await apiRequest('/api/password-reset/request',{method:'POST',body:JSON.stringify({id})});message.textContent=data.message;message.className='success';}catch(error){message.textContent=error.message;}}
 async function confirmPasswordReset(event){event.preventDefault();const id=$('#password-reset-id').value.trim(),ticket=$('#password-reset-ticket').value.trim(),password=$('#password-reset-new-password').value,message=$('#password-reset-message');message.className='';try{await apiRequest('/api/password-reset/confirm',{method:'POST',body:JSON.stringify({id,ticket,password})});message.textContent='비밀번호를 변경했습니다. 새 비밀번호로 로그인하세요.';message.className='success';$('#password-reset-ticket').value='';$('#password-reset-new-password').value='';}catch(error){message.textContent=error.message;}}
-function activateAccount(id,token,serverProgress){activeUser=id;authToken=token||authToken;localStorage.setItem(AUTH_SESSION_KEY,authToken);progress=id===DEVELOPER_ID?developerProgress():loadProgress(serverProgress);selectedStage=Math.min(progress.highestStage,STAGES.length-1);game=null;setAuthView();renderMeta();requestAnimationFrame(()=>{resizeCanvas();draw();});}
-function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;if(authToken&&!authToken.startsWith('local:'))apiRequest('/api/logout',{method:'POST'}).catch(()=>{});game=null;cancelAnimationFrame(animationId);activeUser='';authToken='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());progress=loadProgress();setAuthView();}
+function activateAccount(id,token,serverProgress){activeUser=id;authToken=token||authToken;localStorage.setItem(AUTH_SESSION_KEY,authToken);progress=id===DEVELOPER_ID?developerProgress():loadProgress(serverProgress);selectedStage=Math.min(progress.highestStage,STAGES.length-1);game=null;setAuthView();setupNotificationPolling();renderMeta();requestAnimationFrame(()=>{resizeCanvas();draw();});}
+function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;if(authToken&&!authToken.startsWith('local:'))apiRequest('/api/logout',{method:'POST'}).catch(()=>{});clearInterval(notificationTimer);notificationTimer=null;game=null;cancelAnimationFrame(animationId);activeUser='';authToken='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());progress=loadProgress();setAuthView();}
 function openDeleteAccount(){if(isDeveloperAccount()){window.alert('개발자 계정은 게임 안에서 삭제할 수 없습니다.');return;}$('#delete-account-form').reset();$('#delete-account-message').textContent='';$('#delete-account-dialog').showModal();}
 async function deleteAccount(event){event.preventDefault();const password=$('#delete-account-password').value,message=$('#delete-account-message');if(!$('#delete-account-confirm').checked)return;if(!window.confirm('정말로 계정을 삭제할까요? 이 작업은 되돌릴 수 없습니다.'))return;message.textContent='계정을 삭제하는 중...';try{await apiRequest('/api/account',{method:'DELETE',body:JSON.stringify({password})});localStorage.removeItem(progressKey());window.alert('계정이 삭제되었습니다.');logoutAccount();}catch(error){message.textContent=error.message;}}
 async function restoreSession(){if(!authToken)return;if(authToken.startsWith('local:')){const id=authToken.slice(6);if(id===DEVELOPER_ID||loadAccounts()[id]){activateAccount(id,authToken,localProgressFor(id));return;}}try{const data=await apiRequest('/api/session');activateAccount(data.id,authToken,data.progress);}catch{authToken='';localStorage.removeItem(AUTH_SESSION_KEY);setAuthView();}}
@@ -300,6 +303,12 @@ function setAuthView(){const loggedIn=Boolean(activeUser);$('#auth-screen').clas
 
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
 function displayDate(value){const date=new Date(value);return Number.isNaN(date.getTime())?'':date.toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+function notificationVisual(kind){return ({direct_message:['💬','1:1 채팅','채팅 가기'],community_post:['📝','커뮤니티 새 글','커뮤니티 가기'],community_comment:['💭','내 글에 댓글','커뮤니티 가기'],friend_request:['👥','친구 요청','친구 가기'],friend_accept:['🤝','친구 요청 수락','친구 가기']})[kind]||['🔔','새 소식','보기'];}
+function setNotificationBadge(count){const badge=$('#notification-badge');badge.textContent=count>99?'99+':String(count);badge.classList.toggle('hidden',!count);}
+async function refreshNotificationBadge(){if(!activeUser||!authToken||authToken.startsWith('local:')){setNotificationBadge(0);return;}try{const data=await apiRequest('/api/notifications');setNotificationBadge(Number(data.unread||0));}catch{setNotificationBadge(0);}}
+function setupNotificationPolling(){clearInterval(notificationTimer);notificationTimer=null;refreshNotificationBadge();if(activeUser&&authToken&&!authToken.startsWith('local:'))notificationTimer=setInterval(refreshNotificationBadge,20000);}
+function renderNotifications(items){const list=$('#notification-list');if(!items.length){list.innerHTML='<p>아직 새로운 알림이 없습니다.</p>';return;}list.innerHTML=items.map(item=>{const [symbol,label,actionLabel]=notificationVisual(item.kind);return `<article class="notification-item ${item.read_at?'':'unread'}"><span class="notification-symbol">${symbol}</span><div class="notification-copy"><small>${label} · ${displayDate(item.created_at)}</small><b>${escapeHtml(item.content)}</b></div><button type="button" data-notification-action="${escapeHtml(item.kind)}">${actionLabel}</button></article>`;}).join('');list.querySelectorAll('[data-notification-action]').forEach(button=>button.addEventListener('click',()=>{const kind=button.dataset.notificationAction;$('#notification-dialog').close();if(kind==='direct_message')openChat();else if(kind==='friend_request'||kind==='friend_accept')openFriends();else openCommunity();}));}
+async function openNotifications(){$('#notification-list').innerHTML='<p>알림을 불러오는 중...</p>';$('#notification-dialog').showModal();try{const data=await apiRequest('/api/notifications');renderNotifications(data.notifications||[]);await apiRequest('/api/notifications/read',{method:'POST'});setNotificationBadge(0);}catch(error){$('#notification-list').innerHTML=`<p>알림을 불러오지 못했습니다: ${escapeHtml(error.message)}</p>`;}}
 async function openSuggestions(){
   const developer=isDeveloperAccount();
   $('#suggestion-title').textContent=developer?'개발자 건의함':'건의함';

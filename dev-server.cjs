@@ -28,6 +28,12 @@ async function api(request,response,pathname){
     if(request.method==='GET'&&pathname==='/api/session'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,200,{id,progress:developerProgress()});const account=await store.get(id);if(!account)return json(response,401,{error:'계정을 찾을 수 없습니다.'});return json(response,200,{id,progress:account.progress||emptyProgress()});
     }
+    if(request.method==='GET'&&pathname==='/api/notifications'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const notifications=await store.listNotifications(id);return json(response,200,{notifications,unread:notifications.filter(item=>!item.read_at).length});
+    }
+    if(request.method==='POST'&&pathname==='/api/notifications/read'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});await store.readNotifications(id);return json(response,200,{ok:true});
+    }
     if(request.method==='PUT'&&pathname==='/api/progress'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,200,{saved:true});const {progress}=await readJson(request);return json(response,await store.saveProgress(id,sanitizeProgress(progress))?200:404,{saved:true});
     }
@@ -87,12 +93,12 @@ async function api(request,response,pathname){
       if(!validId(recipient)||recipient===id)return json(response,400,{error:'올바른 친구 아이디를 입력해 주세요.'});
       if(!await store.get(recipient))return json(response,404,{error:'해당 회원을 찾을 수 없습니다.'});
       const relations=await store.listFriends(id);if(relations.friends.some(friend=>friend.id===recipient))return json(response,409,{error:'이미 친구인 회원입니다.'});
-      return json(response,201,{request:await store.sendFriendRequest(id,recipient)});
+      const friendRequest=await store.sendFriendRequest(id,recipient);await store.createNotification(recipient,id,'friend_request',`${id}님이 친구 요청을 보냈습니다.`);return json(response,201,{request:friendRequest});
     }
     const friendRequestMatch=pathname.match(/^\/api\/friends\/requests\/(\d+)\/(accept|reject)$/);
     if(request.method==='POST'&&friendRequestMatch){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
-      if(friendRequestMatch[2]==='accept')return json(response,200,{request:await store.acceptFriendRequest(friendRequestMatch[1],id)});
+      if(friendRequestMatch[2]==='accept'){const friendRequest=await store.acceptFriendRequest(friendRequestMatch[1],id);await store.createNotification(friendRequest.sender_id,id,'friend_accept',`${id}님이 친구 요청을 수락했습니다.`);return json(response,200,{request:friendRequest});}
       if(!await store.rejectFriendRequest(friendRequestMatch[1],id))return json(response,404,{error:'친구 요청을 찾을 수 없습니다.'});
       return json(response,200,{rejected:true});
     }
@@ -110,7 +116,7 @@ async function api(request,response,pathname){
       const id=tokenUser(request),peer=chatMatch[1];if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(peer===id||(!await store.get(peer)&&peer!==developerId))return json(response,404,{error:'대화 상대를 찾을 수 없습니다.'});return json(response,200,{messages:await store.getDirectMessages(id,peer)});
     }
     if(chatMatch&&request.method==='POST'){
-      const id=tokenUser(request),peer=chatMatch[1];if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {content}=await readJson(request),text=typeof content==='string'?content.trim():'';if(peer===id||(!await store.get(peer)&&peer!==developerId))return json(response,404,{error:'대화 상대를 찾을 수 없습니다.'});if(text.length<1||text.length>500)return json(response,400,{error:'메시지는 1~500자로 입력해 주세요.'});return json(response,201,{message:await store.sendDirectMessage(id,peer,text)});
+      const id=tokenUser(request),peer=chatMatch[1];if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {content}=await readJson(request),text=typeof content==='string'?content.trim():'';if(peer===id||(!await store.get(peer)&&peer!==developerId))return json(response,404,{error:'대화 상대를 찾을 수 없습니다.'});if(text.length<1||text.length>500)return json(response,400,{error:'메시지는 1~500자로 입력해 주세요.'});const message=await store.sendDirectMessage(id,peer,text);await store.createNotification(peer,id,'direct_message',`${id}님이 1:1 메시지를 보냈습니다.`);return json(response,201,{message});
     }
     if(request.method==='GET'&&pathname==='/api/community/posts'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
@@ -120,7 +126,7 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       const {title,content}=await readJson(request),cleanTitle=typeof title==='string'?title.trim():'',cleanContent=typeof content==='string'?content.trim():'';
       if(cleanTitle.length<2||cleanTitle.length>80||cleanContent.length<2||cleanContent.length>1000)return json(response,400,{error:'제목은 2~80자, 내용은 2~1000자로 입력해 주세요.'});
-      return json(response,201,{post:await store.createPost(id,cleanTitle,cleanContent)});
+      const post=await store.createPost(id,cleanTitle,cleanContent);if(id!==developerId)await store.createNotification(developerId,id,'community_post',`${id}님이 커뮤니티에 새 글을 올렸습니다.`);return json(response,201,{post});
     }
     const postMatch=pathname.match(/^\/api\/community\/posts\/(\d+)$/);
     if(postMatch&&(request.method==='PUT'||request.method==='DELETE')){
@@ -133,7 +139,7 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       const {content}=await readJson(request),text=typeof content==='string'?content.trim():'';
       if(text.length<1||text.length>500)return json(response,400,{error:'댓글은 1~500자로 입력해 주세요.'});
-      const comment=await store.createComment(id,commentMatch[1],text);if(!comment)return json(response,404,{error:'게시글을 찾을 수 없습니다.'});
+      const post=await store.getPost(commentMatch[1]);const comment=await store.createComment(id,commentMatch[1],text);if(!comment)return json(response,404,{error:'게시글을 찾을 수 없습니다.'});if(post&&post.user_id!==id)await store.createNotification(post.user_id,id,'community_comment',`${id}님이 내 게시글에 댓글을 남겼습니다.`);
       return json(response,201,{comment});
     }
     if(request.method==='POST'&&pathname==='/api/suggestions'){
