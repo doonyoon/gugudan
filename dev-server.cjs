@@ -14,6 +14,7 @@ function tokenUser(request){try{const [payload,signature]=tokenFrom(request).spl
 function makeSession(id){const payload=Buffer.from(JSON.stringify({id,expires:Date.now()+1000*60*60*24*30})).toString('base64url'),signature=crypto.createHmac('sha256',sessionSecret).update(payload).digest('base64url');return `${payload}.${signature}`;}
 async function passwordHash(password,salt){return (await scrypt(password,salt,64)).toString('hex');}
 function developerProgress(){return {...emptyProgress(),gold:Number.MAX_SAFE_INTEGER,highestStage:19,cleared:Array.from({length:20},(_,i)=>i),developer:true};}
+const pvpUnits=new Set(['runner','tank','fighter','mage','ninja','dragon','gunner','titan','boxer','chef','cosmic','emperor','farmer','sleepy','pirate','medic','samurai','rocket','phantom','paladin','phoenix','chronos']);
 async function api(request,response,pathname){
   try{
     if(request.method==='POST'&&pathname==='/api/signup'){
@@ -38,6 +39,27 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,200,{saved:true});const {progress}=await readJson(request);return json(response,await store.saveProgress(id,sanitizeProgress(progress))?200:404,{saved:true});
     }
     if(request.method==='POST'&&pathname==='/api/logout')return json(response,200,{ok:true});
+    if(request.method==='POST'&&pathname==='/api/pvp/match'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      return json(response,200,{room:await store.joinPvp(id)});
+    }
+    const pvpMatch=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})(?:\/(spawn|finish))?$/i);
+    if(pvpMatch&&request.method==='GET'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      const since=Math.max(0,Number(new URL(request.url,'http://localhost').searchParams.get('since'))||0),data=await store.listPvpEvents(pvpMatch[1],id,since);
+      return data?json(response,200,data):json(response,404,{error:'대전방을 찾을 수 없습니다.'});
+    }
+    if(pvpMatch&&pvpMatch[2]==='spawn'&&request.method==='POST'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {unitType}=await readJson(request);
+      if(!pvpUnits.has(unitType))return json(response,400,{error:'사용할 수 없는 고양이입니다.'});
+      const account=id===developerId?{progress:developerProgress()}:await store.get(id);if(!account)return json(response,401,{error:'계정을 찾을 수 없습니다.'});
+      if(!account.progress?.owned?.includes(unitType)&&!['runner','tank','fighter','mage'].includes(unitType))return json(response,403,{error:'보유하지 않은 고양이입니다.'});
+      const event=await store.sendPvpUnit(pvpMatch[1],id,unitType);return event?json(response,201,{event}):json(response,409,{error:'상대의 입장을 기다리거나 끝난 대전입니다.'});
+    }
+    if(pvpMatch&&pvpMatch[2]==='finish'&&request.method==='POST'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {winnerId}=await readJson(request);
+      const room=await store.finishPvp(pvpMatch[1],id,winnerId);return room?json(response,200,{room}):json(response,409,{error:'대전을 종료할 수 없습니다.'});
+    }
     if(request.method==='DELETE'&&pathname==='/api/account'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,403,{error:'개발자 계정은 여기서 삭제할 수 없습니다.'});const {password}=await readJson(request),account=await store.get(id);if(!account||typeof password!=='string'||account.password_hash!==await passwordHash(password,account.salt))return json(response,401,{error:'비밀번호가 맞지 않습니다.'});return json(response,await store.deleteAccount(id)?200:404,{deleted:true});
     }

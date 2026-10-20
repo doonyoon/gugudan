@@ -72,6 +72,7 @@
         <button id="lineup-button" class="icon-button lineup-icon" type="button" aria-label="출전 슬롯 편성">편성</button>
         <button id="gacha-button" class="icon-button gacha-icon" type="button" aria-label="캐릭터 뽑기">🎁</button>
         <button id="ranking-button" class="icon-button ranking-icon" type="button" aria-label="랭킹">🏆</button>
+        <button id="pvp-button" class="icon-button pvp-icon" type="button" aria-label="실시간 대전">⚔</button>
         <button id="friends-button" class="icon-button friends-icon" type="button" aria-label="친구">👥</button>
         <button id="notification-button" class="icon-button notification-icon" type="button" aria-label="알림">🔔<b id="notification-badge" class="notification-badge hidden">0</b></button>
         <button id="chat-button" class="icon-button chat-icon" type="button" aria-label="1대1 채팅">✉</button>
@@ -232,6 +233,13 @@
     <h2>🏆 TOP 3 랭킹</h2>
     <p>골드가 많은 순 · 동점이면 최고 스테이지가 높은 순</p>
     <div id="ranking-list" class="ranking-list"></div>
+  </dialog>
+  <dialog id="pvp-dialog" class="pvp-dialog">
+    <button class="dialog-close" id="close-pvp" type="button" aria-label="닫기">×</button>
+    <h2>⚔ 실시간 1대1 대전</h2>
+    <p>서로 고양이를 소환해 상대 성을 먼저 부수면 승리합니다.</p>
+    <p id="pvp-status" class="pvp-status">빠른 매칭을 눌러 상대를 찾으세요.</p>
+    <button id="pvp-match-button" class="main-button" type="button">빠른 매칭</button>
   </dialog>
   <dialog id="admin-dialog" class="admin-dialog">
     <button class="dialog-close" id="close-admin" type="button" aria-label="닫기">×</button>
