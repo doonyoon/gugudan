@@ -9,6 +9,7 @@ battleSpeedButton.setAttribute('aria-label', '전투 2배속');
 battleSpeedButton.setAttribute('aria-pressed', 'false');
 battleSpeedButton.title = '전투 속도 전환 (음악 속도는 유지됩니다)';
 battleSpeedButton.addEventListener('click', () => {
+  if(game?.mode==='pvp')return;
   battleSpeed = battleSpeed === 1 ? 2 : 1;
   battleSpeedButton.textContent = `${battleSpeed}배속`;
   battleSpeedButton.setAttribute('aria-pressed', String(battleSpeed === 2));
@@ -350,11 +351,13 @@ async function pollPvpRoom(){
   }catch(error){$('#pvp-status').textContent=`연결 재시도 중: ${error.message}`;}
 }
 function createPvpGame(room){const hp=5200;return {running:true,mode:'pvp',roomId:room.id,time:0,money:700,maxMoney:2200,income:72,workerLevel:1,playerHp:hp,playerMaxHp:hp,enemyHp:hp,enemyMaxHp:hp,enemyTimer:Infinity,enemySpawn:Infinity,enemyScale:1,spawnCount:0,bossType:null,bossName:'',bossSpawned:false,bossDefeated:true,bossWarning:0,bossRageWarning:0,units:[],enemies:[],particles:[],projectiles:[],cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])),training:Object.fromEntries(progress.loadout.map(type=>[type,0])),autoSummon:Object.fromEntries(progress.loadout.map(type=>[type,false])),pendingSpawns:0,shake:0,result:null};}
-function startPvpBattle(room){clearPvpPolling();pvpRoom=room;pvpScheduledEvents=new Set();$('#pvp-dialog').close();initAudio();setBgmTrack(LOBBY_BGM_ID);resizeCanvas();game=createPvpGame(room);$('#stage-label').textContent='PVP BATTLE';$('#start-overlay').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#exit-battle').classList.remove('hidden');$('#training-panel').classList.remove('hidden');renderTraining();lastTime=performance.now();cancelAnimationFrame(animationId);animationId=requestAnimationFrame(loop);pvpPollTimer=setInterval(pollPvpRoom,400);playJingle([392,523,659]);}
+function resetBattleSpeed(){battleSpeed=1;battleSpeedButton.textContent='1배속';battleSpeedButton.setAttribute('aria-pressed','false');battleSpeedButton.style.backgroundColor='';battleSpeedButton.style.color='';}
+function isPvpPlayerOne(){return pvpRoom?.player_one===activeUser;}
+function startPvpBattle(room){clearPvpPolling();pvpRoom=room;pvpScheduledEvents=new Set();resetBattleSpeed();battleSpeedButton.classList.add('hidden');$('#pvp-dialog').close();initAudio();setBgmTrack(LOBBY_BGM_ID);resizeCanvas();game=createPvpGame(room);$('#stage-label').textContent='PVP BATTLE';$('#start-overlay').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#exit-battle').classList.remove('hidden');$('#training-panel').classList.remove('hidden');renderTraining();lastTime=performance.now();cancelAnimationFrame(animationId);animationId=requestAnimationFrame(loop);pvpPollTimer=setInterval(pollPvpRoom,400);playJingle([392,523,659]);}
 function queuePvpSpawn(event){if(!event||pvpScheduledEvents.has(String(event.id)))return;pvpScheduledEvents.add(String(event.id));const delay=Math.max(0,Date.parse(event.execute_at||event.created_at)-Date.now());setTimeout(()=>{if(game?.running&&game.mode==='pvp')spawnPvpUnit(event,event.player_id===activeUser);},delay);}
-function spawnPvpUnit(event,mine){const u=UNIT_TYPES[event.unit_type];if(!u||!game)return;const stats=event.unit_data||{},unit={...u,...stats,id:crypto.randomUUID(),side:mine?'cat':'enemy',kind:mine?undefined:'pvp',unitType:event.unit_type,x:mine?82+Math.random()*8:(canvas.viewWidth||800)-82,y:groundY(),attack:.25,hp:Math.max(1,Number(stats.hp||u.hp)),maxHp:Math.max(1,Number(stats.maxHp||stats.hp||u.hp)),damage:Math.max(0,Number(stats.damage??u.damage)),heal:Math.max(0,Number(stats.heal??(u.heal||0))),rageTriggered:false};if(mine){game.pendingSpawns=Math.max(0,(game.pendingSpawns||0)-1);game.units.push(unit);}else game.enemies.push(unit);}
+function spawnPvpUnit(event,mine){const u=UNIT_TYPES[event.unit_type];if(!u||!game)return;const stats=event.unit_data||{},playerOne=event.player_id===pvpRoom?.player_one,unit={...u,...stats,id:crypto.randomUUID(),side:playerOne?'cat':'enemy',kind:playerOne?undefined:'pvp',unitType:event.unit_type,x:playerOne?82+Math.random()*8:(canvas.viewWidth||800)-82,y:groundY(),attack:.25,hp:Math.max(1,Number(stats.hp||u.hp)),maxHp:Math.max(1,Number(stats.maxHp||stats.hp||u.hp)),damage:Math.max(0,Number(stats.damage??u.damage)),heal:Math.max(0,Number(stats.heal??(u.heal||0))),rageTriggered:false};if(mine)game.pendingSpawns=Math.max(0,(game.pendingSpawns||0)-1);if(playerOne)game.units.push(unit);else game.enemies.push(unit);}
 function sendPvpUnit(unitType,unit){if(!pvpRoom)return;const unitData={hp:unit.hp,maxHp:unit.maxHp,damage:unit.damage,heal:unit.heal||0};apiRequest(`/api/pvp/rooms/${pvpRoom.id}/spawn`,{method:'POST',body:JSON.stringify({unitType,unitData})}).then(data=>queuePvpSpawn(data.event)).catch(error=>{if(game?.mode==='pvp'){game.pendingSpawns=Math.max(0,(game.pendingSpawns||0)-1);game.money=Math.min(game.maxMoney,game.money+UNIT_TYPES[unitType].cost);game.cooldowns[unitType]=0;}console.warn('PVP spawn failed:',error.message);});}
-function completePvpBattle(win){if(!game)return;clearPvpPolling();game.running=false;game.result=win;game.autoSummon={};renderDeck();$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');const box=$('#battle-message');box.innerHTML=`<span>${win?'승리!':'패배...'}</span><small>${win?'상대 성을 먼저 파괴했습니다.':'상대가 우리 성을 먼저 파괴했습니다.'}</small><button class="main-button" id="retry-button">대전 선택</button>`;box.classList.remove('hidden');$('#retry-button').onclick=()=>{$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setBgmTrack(LOBBY_BGM_ID);renderMeta();};playJingle(win?[523,659,784,1047]:[330,247,196],.18);}
+function completePvpBattle(win){if(!game)return;clearPvpPolling();game.running=false;game.result=win;game.autoSummon={};renderDeck();$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');const box=$('#battle-message');box.innerHTML=`<span>${win?'승리!':'패배...'}</span><small>${win?'상대 성을 먼저 파괴했습니다.':'상대가 우리 성을 먼저 파괴했습니다.'}</small><button class="main-button" id="retry-button">대전 선택</button>`;box.classList.remove('hidden');$('#retry-button').onclick=()=>{battleSpeedButton.classList.remove('hidden');resetBattleSpeed();$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setBgmTrack(LOBBY_BGM_ID);renderMeta();};playJingle(win?[523,659,784,1047]:[330,247,196],.18);}
 async function openFriends(){
   $('#friend-message').textContent='';$('#friend-message').className='';$('#friend-request-list').innerHTML='<p>불러오는 중...</p>';$('#friend-list').innerHTML='<p>불러오는 중...</p>';$('#friends-dialog').showModal();await loadFriends();
 }
@@ -485,12 +488,13 @@ async function redeemCoupon(event){
 }
 
 function startBattle() {
+  battleSpeedButton.classList.remove('hidden');resetBattleSpeed();
   initAudio();setBgmTrack(selectedStage===0?STAGE_ONE_BGM_ID:selectedStage===9?STAGE_TEN_BGM_ID:selectedStage===STAGES.length-1?FINAL_STAGE_BGM_ID:LOBBY_BGM_ID);resizeCanvas();game=createGame(); $('#stage-label').textContent=`STAGE ${selectedStage+1}`; $('#start-overlay').classList.add('hidden'); $('#battle-message').classList.add('hidden'); $('#exit-battle').classList.remove('hidden'); $('#training-panel').classList.remove('hidden'); renderTraining(); lastTime=performance.now(); cancelAnimationFrame(animationId); animationId=requestAnimationFrame(loop); playJingle([392,523,659]);
 }
 function exitBattle(){
   if(!game?.running)return;
   if(!window.confirm('현재 전투를 포기하고 인트로로 돌아갈까요?\n사용한 물고기와 전투 강화는 사라집니다.'))return;
-  if(game.mode==='pvp'&&pvpRoom)apiRequest(`/api/pvp/rooms/${pvpRoom.id}/finish`,{method:'POST',body:JSON.stringify({winnerId:pvpOpponent()})}).catch(()=>{});clearPvpPolling();pvpRoom=null;game.running=false;cancelAnimationFrame(animationId);game=null;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setBgmTrack(LOBBY_BGM_ID);renderMeta();playTone(220,.2,'triangle',.06);
+  const wasPvp=game.mode==='pvp';if(wasPvp&&pvpRoom)apiRequest(`/api/pvp/rooms/${pvpRoom.id}/finish`,{method:'POST',body:JSON.stringify({winnerId:pvpOpponent()})}).catch(()=>{});clearPvpPolling();pvpRoom=null;game.running=false;cancelAnimationFrame(animationId);game=null;battleSpeedButton.classList.remove('hidden');resetBattleSpeed();$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setBgmTrack(LOBBY_BGM_ID);renderMeta();playTone(220,.2,'triangle',.06);
 }
 function loop(now) {
   const dt=Math.max(0,Math.min((now-lastTime)/1000,.04)); lastTime=now;
@@ -507,7 +511,7 @@ function update(dt) {
   updateProjectiles(dt);
   game.projectiles=game.projectiles.filter(p=>p.life>0);
   game.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=80*dt;p.life-=dt;}); game.particles=game.particles.filter(p=>p.life>0); game.shake=Math.max(0,game.shake-dt*12);
-  removeDead(); if(game.playerHp<=0) finish(false); if(game.enemyHp<=0) finish(true);
+  removeDead();if(game.mode==='pvp'){const playerOne=isPvpPlayerOne();if(game.playerHp<=0)finish(!playerOne);else if(game.enemyHp<=0)finish(playerOne);}else{if(game.playerHp<=0)finish(false);if(game.enemyHp<=0)finish(true);}
 }
 function updateArmy(army,opponents,direction,dt) {
   const width=canvas.viewWidth||800;
