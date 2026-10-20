@@ -135,6 +135,7 @@ const STAGE_THEMES = [
 ];
 const STAGE_BACKGROUNDS=Array.from({length:20},(_,index)=>`assets/backgrounds/stage-${String(index+1).padStart(2,'0')}.png`);
 const stageBackgroundImages=STAGE_BACKGROUNDS.map(source=>{const image=new Image();image.src=source;return image;});
+const pvpBackgroundImage=new Image();pvpBackgroundImage.src='assets/backgrounds/pvp-arena.png';
 const baseImages={player:new Image(),enemy:new Image()};baseImages.player.src='assets/backgrounds/player-castle.png';baseImages.enemy.src='assets/backgrounds/enemy-castle.png';
 const BASIC_UNITS = ['runner','tank','fighter','mage'];
 const RARITY_RANK = {'기본':0,'노멀':1,'EX':2,'레어':3,'슈퍼 레어':4,'울트라 슈퍼 레어':5,'레전드 레어':6};
@@ -201,6 +202,7 @@ $('#close-ranking').addEventListener('click', () => $('#ranking-dialog').close()
 $('#pvp-button').addEventListener('click', openPvp);
 $('#close-pvp').addEventListener('click', () => $('#pvp-dialog').close());
 $('#pvp-match-button').addEventListener('click', joinPvpMatch);
+$('#pvp-cancel-button').addEventListener('click', cancelPvpMatch);
 $('#friends-button').addEventListener('click', openFriends);
 $('#close-friends').addEventListener('click', () => $('#friends-dialog').close());
 $('#friend-request-form').addEventListener('submit', sendFriendRequest);
@@ -267,7 +269,7 @@ async function resetPassword(){const id=$('#auth-id').value.trim();$('#password-
 async function requestPasswordReset(event){event.preventDefault();const id=$('#password-reset-id').value.trim(),message=$('#password-reset-message');message.className='';try{const data=await apiRequest('/api/password-reset/request',{method:'POST',body:JSON.stringify({id})});message.textContent=data.message;message.className='success';}catch(error){message.textContent=error.message;}}
 async function confirmPasswordReset(event){event.preventDefault();const id=$('#password-reset-id').value.trim(),ticket=$('#password-reset-ticket').value.trim(),password=$('#password-reset-new-password').value,message=$('#password-reset-message');message.className='';try{await apiRequest('/api/password-reset/confirm',{method:'POST',body:JSON.stringify({id,ticket,password})});message.textContent='비밀번호를 변경했습니다. 새 비밀번호로 로그인하세요.';message.className='success';$('#password-reset-ticket').value='';$('#password-reset-new-password').value='';}catch(error){message.textContent=error.message;}}
 function activateAccount(id,token,serverProgress){activeUser=id;authToken=token||authToken;localStorage.setItem(AUTH_SESSION_KEY,authToken);progress=id===DEVELOPER_ID?developerProgress():loadProgress(serverProgress);selectedStage=Math.min(progress.highestStage,STAGES.length-1);game=null;setAuthView();setupNotificationPolling();renderMeta();requestAnimationFrame(()=>{resizeCanvas();draw();});}
-function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;if(authToken&&!authToken.startsWith('local:'))apiRequest('/api/logout',{method:'POST'}).catch(()=>{});clearInterval(notificationTimer);notificationTimer=null;game=null;cancelAnimationFrame(animationId);activeUser='';authToken='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());progress=loadProgress();setAuthView();}
+function logoutAccount(){if(game?.running&&!window.confirm('전투를 종료하고 로그아웃할까요?'))return;if(game?.mode==='pvp'&&pvpRoom)apiRequest(`/api/pvp/rooms/${pvpRoom.id}/finish`,{method:'POST',body:JSON.stringify({winnerId:pvpOpponent()})}).catch(()=>{});if(authToken&&!authToken.startsWith('local:'))apiRequest('/api/logout',{method:'POST'}).catch(()=>{});clearInterval(notificationTimer);notificationTimer=null;clearPvpPolling();pvpRoom=null;game=null;cancelAnimationFrame(animationId);activeUser='';authToken='';localStorage.removeItem(AUTH_SESSION_KEY);document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());progress=loadProgress();setAuthView();}
 function openDeleteAccount(){if(isDeveloperAccount()){window.alert('개발자 계정은 게임 안에서 삭제할 수 없습니다.');return;}$('#delete-account-form').reset();$('#delete-account-message').textContent='';$('#delete-account-dialog').showModal();}
 async function deleteAccount(event){event.preventDefault();const password=$('#delete-account-password').value,message=$('#delete-account-message');if(!$('#delete-account-confirm').checked)return;if(!window.confirm('정말로 계정을 삭제할까요? 이 작업은 되돌릴 수 없습니다.'))return;message.textContent='계정을 삭제하는 중...';try{await apiRequest('/api/account',{method:'DELETE',body:JSON.stringify({password})});localStorage.removeItem(progressKey());window.alert('계정이 삭제되었습니다.');logoutAccount();}catch(error){message.textContent=error.message;}}
 async function restoreSession(){if(!authToken)return;if(authToken.startsWith('local:')){const id=authToken.slice(6);if(id===DEVELOPER_ID||loadAccounts()[id]){activateAccount(id,authToken,localProgressFor(id));return;}}try{const data=await apiRequest('/api/session');activateAccount(data.id,authToken,data.progress);}catch{authToken='';localStorage.removeItem(AUTH_SESSION_KEY);setAuthView();}}
@@ -333,16 +335,18 @@ async function replySuggestion(event){event.preventDefault();const form=event.cu
 async function openRanking(){$('#ranking-list').innerHTML='<p>랭킹을 불러오는 중...</p>';$('#ranking-dialog').showModal();try{const data=await apiRequest('/api/rankings'),medals=['🥇','🥈','🥉'];$('#ranking-list').innerHTML=(data.rankings||[]).length?data.rankings.map(player=>`<article class="ranking-item"><b>${medals[player.rank-1]||player.rank}</b><strong>${escapeHtml(player.id)}</strong><small>${Number(player.gold).toLocaleString()} 골드<br>최고 스테이지 ${Number(player.highestStage)+1}</small></article>`).join(''):'<p>아직 랭킹에 등록된 회원이 없습니다.</p>';}catch(error){$('#ranking-list').innerHTML=`<p>랭킹을 불러오지 못했습니다: ${escapeHtml(error.message)}</p>`;}}
 function clearPvpPolling(){if(pvpPollTimer){clearInterval(pvpPollTimer);pvpPollTimer=null;}}
 function pvpOpponent(room=pvpRoom){return room?.player_one===activeUser?room.player_two:room?.player_one;}
-function openPvp(){$('#pvp-status').textContent=pvpRoom?.status==='waiting'?'상대를 찾는 중입니다. 다른 회원이 입장하면 자동으로 시작됩니다.':'빠른 매칭을 눌러 상대를 찾으세요.';$('#pvp-match-button').disabled=Boolean(pvpRoom?.status==='waiting');$('#pvp-dialog').showModal();}
+function openPvp(){if(game?.running){window.alert('진행 중인 전투를 끝낸 뒤 대전을 시작해 주세요.');return;}const waiting=pvpRoom?.status==='waiting';$('#pvp-status').textContent=waiting?'상대를 찾는 중입니다. 다른 회원이 입장하면 자동으로 시작됩니다.':'빠른 매칭을 눌러 상대를 찾으세요.';$('#pvp-match-button').disabled=waiting;$('#pvp-cancel-button').classList.toggle('hidden',!waiting);$('#pvp-dialog').showModal();}
 async function joinPvpMatch(){
   const button=$('#pvp-match-button');button.disabled=true;$('#pvp-status').textContent='대전방을 찾는 중...';
-  try{const data=await apiRequest('/api/pvp/match',{method:'POST'});pvpRoom=data.room;pvpEventCursor=0;if(pvpRoom.status==='active')startPvpBattle(pvpRoom);else{$('#pvp-status').textContent='상대를 기다리는 중... 다른 회원이 실시간 대전 버튼을 누르면 시작됩니다.';clearPvpPolling();pvpPollTimer=setInterval(pollPvpRoom,1000);}}catch(error){button.disabled=false;$('#pvp-status').textContent=error.message;}
+  try{const data=await apiRequest('/api/pvp/match',{method:'POST'});pvpRoom=data.room;pvpEventCursor=0;if(pvpRoom.status==='active')startPvpBattle(pvpRoom);else{$('#pvp-status').textContent='상대를 기다리는 중... 다른 회원이 실시간 대전 버튼을 누르면 시작됩니다.';$('#pvp-cancel-button').classList.remove('hidden');clearPvpPolling();pvpPollTimer=setInterval(pollPvpRoom,1000);}}catch(error){button.disabled=false;$('#pvp-status').textContent=error.message;}
 }
+async function cancelPvpMatch(){if(!pvpRoom||pvpRoom.status!=='waiting')return;try{await apiRequest(`/api/pvp/rooms/${pvpRoom.id}/cancel`,{method:'POST'});clearPvpPolling();pvpRoom=null;pvpEventCursor=0;$('#pvp-status').textContent='매칭을 취소했습니다.';$('#pvp-match-button').disabled=false;$('#pvp-cancel-button').classList.add('hidden');}catch(error){$('#pvp-status').textContent=error.message;}}
 async function pollPvpRoom(){
   if(!pvpRoom)return;try{const data=await apiRequest(`/api/pvp/rooms/${pvpRoom.id}?since=${pvpEventCursor}`);pvpRoom=data.room;
-    for(const event of data.events||[]){pvpEventCursor=Math.max(pvpEventCursor,Number(event.id)||0);if(event.player_id!==activeUser&&game?.mode==='pvp')spawnPvpOpponent(event.unit_type);}
     if(pvpRoom.status==='active'&&(!game||!game.running||game.mode!=='pvp'))startPvpBattle(pvpRoom);
+    for(const event of data.events||[]){pvpEventCursor=Math.max(pvpEventCursor,Number(event.id)||0);if(event.player_id!==activeUser&&game?.mode==='pvp')spawnPvpOpponent(event.unit_type);}
     if(pvpRoom.status==='finished'&&game?.running&&game.mode==='pvp')completePvpBattle(pvpRoom.winner_id===activeUser);
+    if(pvpRoom.status==='cancelled'){clearPvpPolling();pvpRoom=null;pvpEventCursor=0;$('#pvp-status').textContent='매칭이 취소되었습니다.';$('#pvp-match-button').disabled=false;$('#pvp-cancel-button').classList.add('hidden');}
   }catch(error){$('#pvp-status').textContent=`연결 재시도 중: ${error.message}`;}
 }
 function createPvpGame(room){const hp=5200;return {running:true,mode:'pvp',roomId:room.id,time:0,money:700,maxMoney:2200,income:72,workerLevel:1,playerHp:hp,playerMaxHp:hp,enemyHp:hp,enemyMaxHp:hp,enemyTimer:Infinity,enemySpawn:Infinity,enemyScale:1,spawnCount:0,bossType:null,bossName:'',bossSpawned:false,bossDefeated:true,bossWarning:0,bossRageWarning:0,units:[],enemies:[],particles:[],projectiles:[],cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])),training:Object.fromEntries(progress.loadout.map(type=>[type,0])),autoSummon:Object.fromEntries(progress.loadout.map(type=>[type,false])),shake:0,result:null};}
@@ -485,7 +489,7 @@ function startBattle() {
 function exitBattle(){
   if(!game?.running)return;
   if(!window.confirm('현재 전투를 포기하고 인트로로 돌아갈까요?\n사용한 물고기와 전투 강화는 사라집니다.'))return;
-  game.running=false;cancelAnimationFrame(animationId);game=null;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setBgmTrack(LOBBY_BGM_ID);renderMeta();playTone(220,.2,'triangle',.06);
+  if(game.mode==='pvp'&&pvpRoom)apiRequest(`/api/pvp/rooms/${pvpRoom.id}/finish`,{method:'POST',body:JSON.stringify({winnerId:pvpOpponent()})}).catch(()=>{});clearPvpPolling();pvpRoom=null;game.running=false;cancelAnimationFrame(animationId);game=null;$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setBgmTrack(LOBBY_BGM_ID);renderMeta();playTone(220,.2,'triangle',.06);
 }
 function loop(now) {
   const dt=Math.max(0,Math.min((now-lastTime)/1000,.04)); lastTime=now;
@@ -594,6 +598,7 @@ function groundY(){return (canvas.viewHeight||400)*.77;}
 
 function draw(){ const w=canvas.viewWidth||800,h=canvas.viewHeight||400;ctx.clearRect(0,0,w,h);ctx.save();if(game?.shake)ctx.translate((Math.random()-.5)*game.shake,(Math.random()-.5)*game.shake);drawBackground(w,h);drawBase(55,groundY(),true,game?.playerHp??2500);drawBase(w-55,groundY(),false,game?.enemyHp??2500);if(game){game.units.forEach(drawUnit);game.enemies.forEach(drawEnemy);game.projectiles.forEach(drawProjectile);game.particles.forEach(drawParticle);if(game.bossRageWarning>0){ctx.fillStyle='#ff394f';ctx.font=`${Math.min(38,w/16)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(`${game.bossName} 광폭화!`,w/2,70);}else if(game.bossWarning>0){ctx.fillStyle=game.bossDefeated?'#ffe56e':'#ff64db';ctx.font=`${Math.min(34,w/18)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(game.bossDefeated?`${game.bossName} 격파!`:`${game.bossName} 강림!`,w/2,70);}}ctx.restore(); }
 function drawBackground(w,h){
+  if(game?.mode==='pvp'&&pvpBackgroundImage.complete&&pvpBackgroundImage.naturalWidth){const scale=Math.max(w/pvpBackgroundImage.naturalWidth,h/pvpBackgroundImage.naturalHeight),width=pvpBackgroundImage.naturalWidth*scale,height=pvpBackgroundImage.naturalHeight*scale;ctx.drawImage(pvpBackgroundImage,(w-width)/2,(h-height)/2,width,height);return;}
   const theme=STAGE_THEMES[selectedStage]||STAGE_THEMES[0],ground=groundY();
   const image=stageBackgroundImages[selectedStage];
   if(image?.complete&&image.naturalWidth){

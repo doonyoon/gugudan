@@ -43,6 +43,11 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       return json(response,200,{room:await store.joinPvp(id)});
     }
+    const pvpCancel=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})\/cancel$/i);
+    if(pvpCancel&&request.method==='POST'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      const room=await store.cancelPvp(pvpCancel[1],id);return room?json(response,200,{room}):json(response,409,{error:'취소할 수 있는 대기방이 아닙니다.'});
+    }
     const pvpMatch=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})(?:\/(spawn|finish))?$/i);
     if(pvpMatch&&request.method==='GET'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
