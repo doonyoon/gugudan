@@ -231,8 +231,12 @@
   <dialog id="ranking-dialog" class="ranking-dialog">
     <button class="dialog-close" id="close-ranking" type="button" aria-label="닫기">×</button>
     <h2>🏆 TOP 3 랭킹</h2>
+    <h3>골드 랭킹</h3>
     <p>골드가 많은 순 · 동점이면 최고 스테이지가 높은 순</p>
     <div id="ranking-list" class="ranking-list"></div>
+    <h3>스테이지 클리어 랭킹</h3>
+    <p>클리어한 스테이지 수가 많은 순 · 동점이면 골드가 많은 순</p>
+    <div id="stage-ranking-list" class="ranking-list"></div>
   </dialog>
   <dialog id="pvp-dialog" class="pvp-dialog">
     <button class="dialog-close" id="close-pvp" type="button" aria-label="닫기">×</button>
@@ -263,6 +267,6 @@
   <iframe id="bgm-player" class="bgm-player" title="게임 배경음악" allow="autoplay"></iframe>
   <audio id="final-stage-bgm" class="bgm-player" src="assets/audio/stage-20-green-sans.mp3" loop preload="auto"></audio>
   <script src="sprite-frames.js?v=20260929-sprites3"></script>
-  <script src="game.js?v=20261020-notifications1"></script>
+  <script src="game.js?v=20261023-stage-ranking1"></script>
 </body>
 </html>
