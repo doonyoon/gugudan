@@ -16,6 +16,7 @@ async function request(pathname,{token,method='GET',body}={}){const response=awa
 function socketClient(token,roomId){return new Promise((resolve,reject)=>{const socket=new WebSocket(`ws://127.0.0.1:${port}/pvp-sync`),messages=[];socket.on('open',()=>socket.send(JSON.stringify({type:'auth',token,roomId})));socket.on('message',raw=>{const message=JSON.parse(String(raw));messages.push(message);if(message.type==='ready')resolve({socket,messages});});socket.on('error',reject);});}
 function rejectedSocket(){return new Promise((resolve,reject)=>{const socket=new WebSocket(`ws://127.0.0.1:${port}/pvp-sync`);const timer=setTimeout(()=>{socket.terminate();reject(new Error('invalid websocket authentication did not close'));},1500);socket.on('open',()=>socket.send(JSON.stringify({type:'auth',token:'invalid',roomId:'00000000-0000-0000-0000-000000000000'})));socket.on('close',code=>{clearTimeout(timer);resolve(code);});socket.on('error',reject);});}
 async function waitFor(messages,predicate){for(let attempt=0;attempt<50;attempt++){const found=messages.find(predicate);if(found)return found;await delay(50);}throw new Error('timed out waiting for websocket message');}
+async function streamClient(token,roomId){const controller=new AbortController(),response=await fetch(`${base}/api/pvp/rooms/${roomId}/stream`,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal});assert.equal(response.status,200);const messages=[],reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';(async()=>{try{while(true){const {done,value}=await reader.read();if(done)return;buffer+=decoder.decode(value,{stream:true});let boundary;while((boundary=buffer.indexOf('\n\n'))>=0){const block=buffer.slice(0,boundary);buffer=buffer.slice(boundary+2);const data=block.split('\n').filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trim()).join('\n');if(data)messages.push(JSON.parse(data));}}}catch(error){if(error.name!=='AbortError')throw error;}})();await waitFor(messages,item=>item.type==='ready');return {controller,messages};}
 
 (async()=>{
   try{
@@ -24,11 +25,12 @@ async function waitFor(messages,predicate){for(let attempt=0;attempt<50;attempt+
     const one=await request('/api/signup',{method:'POST',body:{id:'syncp1',password:'test1234'}}),two=await request('/api/signup',{method:'POST',body:{id:'syncp2',password:'test1234'}});
     const waiting=await request('/api/pvp/match',{method:'POST',token:one.token}),joined=await request('/api/pvp/match',{method:'POST',token:two.token});
     assert.equal(waiting.room.id,joined.room.id);assert.equal(joined.room.status,'active');
-    const [clientOne,clientTwo]=await Promise.all([socketClient(one.token,joined.room.id),socketClient(two.token,joined.room.id)]);assert.equal(typeof clientOne.messages[0].serverNow,'number');
+    const [clientOne,clientTwo,streamTwo]=await Promise.all([socketClient(one.token,joined.room.id),socketClient(two.token,joined.room.id),streamClient(two.token,joined.room.id)]);assert.equal(typeof clientOne.messages[0].serverNow,'number');assert.equal(typeof streamTwo.messages[0].serverNow,'number');
     const state={time:3.25,playerHp:5100,playerMaxHp:5200,enemyHp:4900,enemyMaxHp:5200,units:[{id:'pvp-1',unitType:'runner',side:'cat',x:140,y:400,hp:100,maxHp:100}],enemies:[],projectiles:[],particles:[]};
     clientOne.socket.send(JSON.stringify({type:'snapshot',version:1,state}));
-    const [snapshotOne,snapshotTwo]=await Promise.all([waitFor(clientOne.messages,item=>item.type==='snapshot'),waitFor(clientTwo.messages,item=>item.type==='snapshot')]);
+    const [snapshotOne,snapshotTwo,streamSnapshot]=await Promise.all([waitFor(clientOne.messages,item=>item.type==='snapshot'),waitFor(clientTwo.messages,item=>item.type==='snapshot'),waitFor(streamTwo.messages,item=>item.type==='snapshot')]);
     assert.deepEqual(snapshotOne.state,snapshotTwo.state);assert.equal(snapshotTwo.state.units[0].x,140);
+    assert.deepEqual(streamSnapshot.state,snapshotTwo.state);
     await request(`/api/pvp/rooms/${joined.room.id}/spawn`,{method:'POST',token:two.token,body:{unitType:'runner',unitData:{hp:100,maxHp:100,damage:10,heal:0}}});
     const [eventOne,eventTwo]=await Promise.all([waitFor(clientOne.messages,item=>item.type==='event'),waitFor(clientTwo.messages,item=>item.type==='event')]);
     assert.equal(eventOne.event.id,eventTwo.event.id);assert.equal(eventOne.event.player_id,'syncp2');
@@ -55,7 +57,7 @@ async function waitFor(messages,predicate){for(let attempt=0;attempt<50;attempt+
     const surrendered=await request(`/api/pvp/rooms/${joinedAgain.room.id}/finish`,{method:'POST',token:two.token,body:{winnerId:'syncp1'}});assert.equal(surrendered.room.winner_id,'syncp1');
     await request('/api/pvp/match',{method:'POST',token:one.token});const last=await request('/api/pvp/match',{method:'POST',token:two.token});
     const hostDefeated=await request(`/api/pvp/rooms/${last.room.id}/finish`,{method:'POST',token:one.token,body:{winnerId:'syncp2',state:{...state,playerHp:0},version:1}});assert.equal(hostDefeated.room.winner_id,'syncp2');assert.equal(hostDefeated.snapshot.state.playerHp,0);
-    clientOne.socket.close();clientTwo.socket.close();console.log('PVP authoritative sync test passed');
+    streamTwo.controller.abort();clientOne.socket.close();clientTwo.socket.close();console.log('PVP authoritative sync test passed');
   }finally{
     server.kill();await delay(100);const resolved=path.resolve(temp),root=path.resolve(os.tmpdir());if(!resolved.startsWith(root+path.sep))throw new Error('unsafe temp cleanup path');fs.rmSync(resolved,{recursive:true,force:true});
   }

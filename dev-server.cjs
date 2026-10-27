@@ -6,7 +6,7 @@ const scrypt=promisify(crypto.scrypt),root=__dirname,port=Number(process.env.POR
 const canonicalUrl='https://doonyoon.github.io/gugudan/',developerId='doonyoon',developerPassword=process.env.DEVELOPER_PASSWORD||'kk45537606',sessionSecret=process.env.SESSION_SECRET||developerPassword;
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.xml':'application/xml','.txt':'text/plain; charset=utf-8','.webp':'image/webp','.png':'image/png','.mp3':'audio/mpeg'};
 let store;
-const pvpSockets=new Map(),pvpStates=new Map();
+const pvpSockets=new Map(),pvpStreams=new Map(),pvpStates=new Map();
 function json(response,status,payload){response.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});response.end(JSON.stringify(payload));}
 function allowApiOrigin(request,response){const origin=String(request.headers.origin||''),allowed=origin==='https://doonyoon.github.io'||/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);if(allowed){response.setHeader('Access-Control-Allow-Origin',origin);response.setHeader('Vary','Origin');response.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');response.setHeader('Access-Control-Allow-Methods','GET, POST, PUT, DELETE, OPTIONS');}}
 function readJson(request){return new Promise((resolve,reject)=>{let body='';request.on('data',chunk=>{body+=chunk;if(body.length>150000){reject(new Error('too_large'));request.destroy();}});request.on('end',()=>{try{resolve(body?JSON.parse(body):{});}catch{reject(new Error('invalid_json'));}});request.on('error',reject);});}
@@ -18,7 +18,7 @@ function makeSession(id){const payload=Buffer.from(JSON.stringify({id,expires:Da
 async function passwordHash(password,salt){return (await scrypt(password,salt,64)).toString('hex');}
 function developerProgress(){return {...emptyProgress(),gold:Number.MAX_SAFE_INTEGER,highestStage:19,cleared:Array.from({length:20},(_,i)=>i),developer:true};}
 const pvpUnits=new Set(['runner','tank','fighter','mage','ninja','dragon','gunner','titan','boxer','chef','cosmic','emperor','farmer','sleepy','pirate','medic','samurai','rocket','phantom','paladin','phoenix','chronos']);
-function broadcastPvp(roomId,payload){const message=JSON.stringify({...payload,serverNow:Date.now()});for(const socket of pvpSockets.get(roomId)||[]){if(socket.readyState===WebSocket.OPEN)socket.send(message);}}
+function broadcastPvp(roomId,payload){const message=JSON.stringify({...payload,serverNow:Date.now()});for(const socket of pvpSockets.get(roomId)||[]){if(socket.readyState===WebSocket.OPEN)socket.send(message);}for(const response of pvpStreams.get(roomId)||[]){if(!response.destroyed)response.write(`data: ${message}\n\n`);}}
 function validPvpSnapshot(state){if(!state||typeof state!=='object'||JSON.stringify(state).length>120000)return false;return ['time','playerHp','playerMaxHp','enemyHp','enemyMaxHp'].every(key=>typeof state[key]==='number'&&Number.isFinite(state[key]))&&state.playerMaxHp>0&&state.enemyMaxHp>0&&Array.isArray(state.units)&&state.units.length<=60&&Array.isArray(state.enemies)&&state.enemies.length<=60&&Array.isArray(state.projectiles)&&state.projectiles.length<=160&&Array.isArray(state.particles)&&state.particles.length<=200;}
 function savePvpSnapshot(roomId,state,version){const previous=pvpStates.get(roomId);if(previous&&Number(version)<=previous.version)return previous;const snapshot={version:Number(version)||1,state,updatedAt:Date.now()};pvpStates.set(roomId,snapshot);broadcastPvp(roomId,{type:'snapshot',...snapshot});return snapshot;}
 function setupPvpSockets(server){
@@ -42,7 +42,7 @@ function setupPvpSockets(server){
     }catch(error){console.warn('PVP socket message ignored:',error.message);}});
     socket.on('close',()=>{clearTimeout(timer);const roomSockets=pvpSockets.get(socket.pvpRoom);if(roomSockets){roomSockets.delete(socket);if(!roomSockets.size)pvpSockets.delete(socket.pvpRoom);}});
   });
-  const heartbeat=setInterval(()=>{for(const socket of sockets.clients){if(socket.isAlive===false){socket.terminate();continue;}socket.isAlive=false;socket.ping();}},15000);
+  const heartbeat=setInterval(()=>{for(const socket of sockets.clients){if(socket.isAlive===false){socket.terminate();continue;}socket.isAlive=false;socket.ping();}for(const responses of pvpStreams.values())for(const response of responses)if(!response.destroyed)response.write(': keepalive\n\n');},15000);
   sockets.on('close',()=>clearInterval(heartbeat));
 }
 async function api(request,response,pathname){
@@ -77,6 +77,13 @@ async function api(request,response,pathname){
     if(pvpCancel&&request.method==='POST'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       const room=await store.cancelPvp(pvpCancel[1],id);return room?json(response,200,{room}):json(response,409,{error:'취소할 수 있는 대기방이 아닙니다.'});
+    }
+    const pvpStream=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})\/stream$/i);
+    if(pvpStream&&request.method==='GET'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const room=await store.getPvpRoom(pvpStream[1],id);if(!room||room.status!=='active')return json(response,404,{error:'진행 중인 대전방을 찾을 수 없습니다.'});
+      response.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});response.flushHeaders?.();
+      if(!pvpStreams.has(room.id))pvpStreams.set(room.id,new Set());const responses=pvpStreams.get(room.id);responses.add(response);response.write(`data: ${JSON.stringify({type:'ready',room,state:pvpStates.get(room.id)||null,serverNow:Date.now()})}\n\n`);
+      const remove=()=>{responses.delete(response);if(!responses.size)pvpStreams.delete(room.id);};request.on('close',remove);response.on('close',remove);return;
     }
     const pvpMatch=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})(?:\/(spawn|finish|snapshot))?$/i);
     if(pvpMatch&&pvpMatch[2]==='snapshot'&&request.method==='POST'){
@@ -238,7 +245,7 @@ async function api(request,response,pathname){
 }
 function handle(request,response){
   const pathname=decodeURIComponent(request.url.split('?')[0]);response.setHeader('X-Content-Type-Options','nosniff');response.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
-  if(pathname==='/health')return json(response,200,{status:'ok',game:'고양이 성채전',database:Boolean(process.env.DATABASE_URL),pvpSync:'websocket'});if(pathname.startsWith('/api/')){allowApiOrigin(request,response);if(request.method==='OPTIONS'){response.setHeader('Access-Control-Max-Age','600');response.writeHead(204);response.end();return;}return api(request,response,pathname);}
+  if(pathname==='/health')return json(response,200,{status:'ok',game:'고양이 성채전',database:Boolean(process.env.DATABASE_URL),pvpSync:'stream'});if(pathname.startsWith('/api/')){allowApiOrigin(request,response);if(request.method==='OPTIONS'){response.setHeader('Access-Control-Max-Age','600');response.writeHead(204);response.end();return;}return api(request,response,pathname);}
   const relative=pathname==='/'?'index.html':pathname.replace(/^\/+/,''),file=path.resolve(root,relative);if(!file.startsWith(root+path.sep)){response.writeHead(403).end('Forbidden');return;}
   fs.readFile(file,(error,contents)=>{if(error){response.writeHead(404).end('Not found');return;}let data=contents,host=/^[a-z0-9.-]+(?::\d+)?$/i.test(request.headers.host||'')?request.headers.host:'';if(host&&['.html','.xml','.txt'].includes(path.extname(file))){const forwarded=String(request.headers['x-forwarded-proto']||'').split(',')[0],protocol=forwarded==='https'||forwarded==='http'?forwarded:'http';data=Buffer.from(data.toString('utf8').replaceAll(canonicalUrl,`${protocol}://${host}/`));}response.setHeader('Cache-Control',process.env.NODE_ENV==='production'?(path.extname(file)==='.webp'&&new URL(request.url,'http://localhost').searchParams.get('v')==='20261027'?'public, max-age=31536000, immutable':'public, max-age=300'):'no-store');response.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');response.end(data);});
 }
