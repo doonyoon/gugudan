@@ -6,7 +6,7 @@ const scrypt=promisify(crypto.scrypt),root=__dirname,port=Number(process.env.POR
 const canonicalUrl='https://doonyoon.github.io/gugudan/',developerId='doonyoon',developerPassword=process.env.DEVELOPER_PASSWORD||'kk45537606',sessionSecret=process.env.SESSION_SECRET||developerPassword;
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.xml':'application/xml','.txt':'text/plain; charset=utf-8','.webp':'image/webp','.png':'image/png','.mp3':'audio/mpeg'};
 let store;
-const pvpSockets=new Map(),pvpStreams=new Map(),pvpStates=new Map();
+const pvpSockets=new Map(),pvpStreams=new Map(),pvpStates=new Map(),pvpRoomCache=new Map();
 function json(response,status,payload){response.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});response.end(JSON.stringify(payload));}
 function allowApiOrigin(request,response){const origin=String(request.headers.origin||''),allowed=origin==='https://doonyoon.github.io'||/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);if(allowed){response.setHeader('Access-Control-Allow-Origin',origin);response.setHeader('Vary','Origin');response.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');response.setHeader('Access-Control-Allow-Methods','GET, POST, PUT, DELETE, OPTIONS');}}
 function readJson(request){return new Promise((resolve,reject)=>{let body='';request.on('data',chunk=>{body+=chunk;if(body.length>150000){reject(new Error('too_large'));request.destroy();}});request.on('end',()=>{try{resolve(body?JSON.parse(body):{});}catch{reject(new Error('invalid_json'));}});request.on('error',reject);});}
@@ -18,7 +18,9 @@ function makeSession(id){const payload=Buffer.from(JSON.stringify({id,expires:Da
 async function passwordHash(password,salt){return (await scrypt(password,salt,64)).toString('hex');}
 function developerProgress(){return {...emptyProgress(),gold:Number.MAX_SAFE_INTEGER,highestStage:19,cleared:Array.from({length:20},(_,i)=>i),developer:true};}
 const pvpUnits=new Set(['runner','tank','fighter','mage','ninja','dragon','gunner','titan','boxer','chef','cosmic','emperor','farmer','sleepy','pirate','medic','samurai','rocket','phantom','paladin','phoenix','chronos']);
-function broadcastPvp(roomId,payload){const message=JSON.stringify({...payload,serverNow:Date.now()});for(const socket of pvpSockets.get(roomId)||[]){if(socket.readyState===WebSocket.OPEN)socket.send(message);}for(const response of pvpStreams.get(roomId)||[]){if(!response.destroyed)response.write(`data: ${message}\n\n`);}}
+function cachePvpRoom(room){if(!room?.id)return room;if(room.status==='active')pvpRoomCache.set(room.id,room);else pvpRoomCache.delete(room.id);return room;}
+async function activePvpRoom(roomId,userId){const cached=pvpRoomCache.get(roomId);if(cached?.status==='active'&&[cached.player_one,cached.player_two].includes(userId))return cached;return cachePvpRoom(await store.getPvpRoom(roomId,userId));}
+function broadcastPvp(roomId,payload){const message=JSON.stringify({...payload,serverNow:Date.now()});for(const socket of pvpSockets.get(roomId)||[]){if(socket.readyState===WebSocket.OPEN)socket.send(message);}for(const response of pvpStreams.get(roomId)||[]){if(response.destroyed)continue;if(response.writableLength>262144){response.destroy();continue;}response.write(`data: ${message}\n\n`);}}
 function validPvpSnapshot(state){if(!state||typeof state!=='object'||JSON.stringify(state).length>120000)return false;return ['time','playerHp','playerMaxHp','enemyHp','enemyMaxHp'].every(key=>typeof state[key]==='number'&&Number.isFinite(state[key]))&&state.playerMaxHp>0&&state.enemyMaxHp>0&&Array.isArray(state.units)&&state.units.length<=60&&Array.isArray(state.enemies)&&state.enemies.length<=60&&Array.isArray(state.projectiles)&&state.projectiles.length<=160&&Array.isArray(state.particles)&&state.particles.length<=200;}
 function savePvpSnapshot(roomId,state,version){const previous=pvpStates.get(roomId);if(previous&&Number(version)<=previous.version)return previous;const snapshot={version:Number(version)||1,state,updatedAt:Date.now()};pvpStates.set(roomId,snapshot);broadcastPvp(roomId,{type:'snapshot',...snapshot});return snapshot;}
 function setupPvpSockets(server){
@@ -30,13 +32,13 @@ function setupPvpSockets(server){
       const message=JSON.parse(String(raw));
       if(!socket.pvpUser){
         if(message.type!=='auth')return socket.close(4001,'authentication required');
-        const userId=userFromToken(message.token),room= userId&&await store.getPvpRoom(String(message.roomId||''),userId);
+        const userId=userFromToken(message.token),room=userId&&await activePvpRoom(String(message.roomId||''),userId);
         if(!room||room.status!=='active')return socket.close(4003,'invalid room');
         clearTimeout(timer);socket.pvpUser=userId;socket.pvpRoom=room.id;if(!pvpSockets.has(room.id))pvpSockets.set(room.id,new Set());pvpSockets.get(room.id).add(socket);
         socket.send(JSON.stringify({type:'ready',room,state:pvpStates.get(room.id)||null,serverNow:Date.now()}));return;
       }
       if(message.type==='snapshot'){
-        const room=await store.getPvpRoom(socket.pvpRoom,socket.pvpUser);if(!room||room.status!=='active'||room.player_one!==socket.pvpUser||!validPvpSnapshot(message.state))return;
+        const room=await activePvpRoom(socket.pvpRoom,socket.pvpUser);if(!room||room.status!=='active'||room.player_one!==socket.pvpUser||!validPvpSnapshot(message.state))return;
         savePvpSnapshot(room.id,message.state,message.version);
       }
     }catch(error){console.warn('PVP socket message ignored:',error.message);}});
@@ -71,16 +73,16 @@ async function api(request,response,pathname){
     if(request.method==='POST'&&pathname==='/api/logout')return json(response,200,{ok:true});
     if(request.method==='POST'&&pathname==='/api/pvp/match'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
-      const room=await store.joinPvp(id);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
+      const room=cachePvpRoom(await store.joinPvp(id));if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
     }
     const pvpCancel=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})\/cancel$/i);
     if(pvpCancel&&request.method==='POST'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
-      const room=await store.cancelPvp(pvpCancel[1],id);return room?json(response,200,{room}):json(response,409,{error:'취소할 수 있는 대기방이 아닙니다.'});
+      const room=cachePvpRoom(await store.cancelPvp(pvpCancel[1],id));return room?json(response,200,{room}):json(response,409,{error:'취소할 수 있는 대기방이 아닙니다.'});
     }
     const pvpStream=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})\/stream$/i);
     if(pvpStream&&request.method==='GET'){
-      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const room=await store.getPvpRoom(pvpStream[1],id);if(!room||room.status!=='active')return json(response,404,{error:'진행 중인 대전방을 찾을 수 없습니다.'});
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const room=await activePvpRoom(pvpStream[1],id);if(!room||room.status!=='active')return json(response,404,{error:'진행 중인 대전방을 찾을 수 없습니다.'});
       response.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});response.flushHeaders?.();
       if(!pvpStreams.has(room.id))pvpStreams.set(room.id,new Set());const responses=pvpStreams.get(room.id);responses.add(response);response.write(`data: ${JSON.stringify({type:'ready',room,state:pvpStates.get(room.id)||null,serverNow:Date.now()})}\n\n`);
       const remove=()=>{responses.delete(response);if(!responses.size)pvpStreams.delete(room.id);};request.on('close',remove);response.on('close',remove);return;
@@ -88,7 +90,7 @@ async function api(request,response,pathname){
     const pvpMatch=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})(?:\/(spawn|finish|snapshot))?$/i);
     if(pvpMatch&&pvpMatch[2]==='snapshot'&&request.method==='POST'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
-      const room=await store.getPvpRoom(pvpMatch[1],id),{state,version}=await readJson(request);
+      const room=await activePvpRoom(pvpMatch[1],id),{state,version}=await readJson(request);
       if(!room||room.status!=='active'||room.player_one!==id)return json(response,403,{error:'대전 호스트만 상태를 전송할 수 있습니다.'});
       if(!validPvpSnapshot(state))return json(response,400,{error:'올바르지 않은 전투 상태입니다.'});
       return json(response,200,{snapshot:savePvpSnapshot(room.id,state,version)});
@@ -96,7 +98,7 @@ async function api(request,response,pathname){
     if(pvpMatch&&request.method==='GET'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       const since=Math.max(0,Number(new URL(request.url,'http://localhost').searchParams.get('since'))||0),data=await store.listPvpEvents(pvpMatch[1],id,since);
-      const snapshot=pvpStates.get(pvpMatch[1])||null;return data?json(response,200,{...data,snapshot,serverNow:Date.now()}):json(response,404,{error:'대전방을 찾을 수 없습니다.'});
+      if(data?.room)cachePvpRoom(data.room);const snapshot=pvpStates.get(pvpMatch[1])||null;return data?json(response,200,{...data,snapshot,serverNow:Date.now()}):json(response,404,{error:'대전방을 찾을 수 없습니다.'});
     }
     if(pvpMatch&&pvpMatch[2]==='spawn'&&request.method==='POST'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {unitType,unitData={}}=await readJson(request);
@@ -116,7 +118,7 @@ async function api(request,response,pathname){
         const expected=state.playerHp<=0?current.player_two:state.enemyHp<=0?current.player_one:null;
         if(!expected||winnerId!==expected)return json(response,409,{error:'성채 체력과 승자가 일치하지 않습니다.'});
       }
-      const room=await store.finishPvp(pvpMatch[1],id,winnerId);if(room){if(id===current.player_one&&validPvpSnapshot(state))savePvpSnapshot(room.id,state,version);broadcastPvp(room.id,{type:'room',room,snapshot:pvpStates.get(room.id)||null});}return room?json(response,200,{room,snapshot:pvpStates.get(room.id)||null}):json(response,409,{error:'대전을 종료할 수 없습니다.'});
+      const room=cachePvpRoom(await store.finishPvp(pvpMatch[1],id,winnerId));if(room){if(id===current.player_one&&validPvpSnapshot(state))savePvpSnapshot(room.id,state,version);broadcastPvp(room.id,{type:'room',room,snapshot:pvpStates.get(room.id)||null});}return room?json(response,200,{room,snapshot:pvpStates.get(room.id)||null}):json(response,409,{error:'대전을 종료할 수 없습니다.'});
     }
     if(request.method==='DELETE'&&pathname==='/api/account'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,403,{error:'개발자 계정은 여기서 삭제할 수 없습니다.'});const {password}=await readJson(request),account=await store.get(id);if(!account||typeof password!=='string'||account.password_hash!==await passwordHash(password,account.salt))return json(response,401,{error:'비밀번호가 맞지 않습니다.'});return json(response,await store.deleteAccount(id)?200:404,{deleted:true});
