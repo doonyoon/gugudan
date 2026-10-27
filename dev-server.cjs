@@ -18,13 +18,13 @@ function makeSession(id){const payload=Buffer.from(JSON.stringify({id,expires:Da
 async function passwordHash(password,salt){return (await scrypt(password,salt,64)).toString('hex');}
 function developerProgress(){return {...emptyProgress(),gold:Number.MAX_SAFE_INTEGER,highestStage:19,cleared:Array.from({length:20},(_,i)=>i),developer:true};}
 const pvpUnits=new Set(['runner','tank','fighter','mage','ninja','dragon','gunner','titan','boxer','chef','cosmic','emperor','farmer','sleepy','pirate','medic','samurai','rocket','phantom','paladin','phoenix','chronos']);
-function broadcastPvp(roomId,payload){const message=JSON.stringify(payload);for(const socket of pvpSockets.get(roomId)||[]){if(socket.readyState===WebSocket.OPEN)socket.send(message);}}
+function broadcastPvp(roomId,payload){const message=JSON.stringify({...payload,serverNow:Date.now()});for(const socket of pvpSockets.get(roomId)||[]){if(socket.readyState===WebSocket.OPEN)socket.send(message);}}
 function validPvpSnapshot(state){if(!state||typeof state!=='object'||JSON.stringify(state).length>120000)return false;return ['time','playerHp','playerMaxHp','enemyHp','enemyMaxHp'].every(key=>typeof state[key]==='number'&&Number.isFinite(state[key]))&&state.playerMaxHp>0&&state.enemyMaxHp>0&&Array.isArray(state.units)&&state.units.length<=60&&Array.isArray(state.enemies)&&state.enemies.length<=60&&Array.isArray(state.projectiles)&&state.projectiles.length<=160&&Array.isArray(state.particles)&&state.particles.length<=200;}
 function savePvpSnapshot(roomId,state,version){const previous=pvpStates.get(roomId);if(previous&&Number(version)<=previous.version)return previous;const snapshot={version:Number(version)||1,state,updatedAt:Date.now()};pvpStates.set(roomId,snapshot);broadcastPvp(roomId,{type:'snapshot',...snapshot});return snapshot;}
 function setupPvpSockets(server){
-  const sockets=new WebSocketServer({noServer:true});
-  server.on('upgrade',(request,socket,head)=>{if(request.url?.split('?')[0]!=='/pvp-sync'){socket.destroy();return;}sockets.handleUpgrade(request,socket,head,client=>sockets.emit('connection',client));});
+  const sockets=new WebSocketServer({server,path:'/pvp-sync'});
   sockets.on('connection',socket=>{
+    socket.isAlive=true;socket.on('pong',()=>{socket.isAlive=true;});socket.on('error',error=>console.warn('PVP socket error:',error.message));
     const timer=setTimeout(()=>socket.close(4001,'authentication timeout'),5000);
     socket.on('message',async raw=>{try{
       const message=JSON.parse(String(raw));
@@ -33,7 +33,7 @@ function setupPvpSockets(server){
         const userId=userFromToken(message.token),room= userId&&await store.getPvpRoom(String(message.roomId||''),userId);
         if(!room||room.status!=='active')return socket.close(4003,'invalid room');
         clearTimeout(timer);socket.pvpUser=userId;socket.pvpRoom=room.id;if(!pvpSockets.has(room.id))pvpSockets.set(room.id,new Set());pvpSockets.get(room.id).add(socket);
-        socket.send(JSON.stringify({type:'ready',room,state:pvpStates.get(room.id)||null}));return;
+        socket.send(JSON.stringify({type:'ready',room,state:pvpStates.get(room.id)||null,serverNow:Date.now()}));return;
       }
       if(message.type==='snapshot'){
         const room=await store.getPvpRoom(socket.pvpRoom,socket.pvpUser);if(!room||room.status!=='active'||room.player_one!==socket.pvpUser||!validPvpSnapshot(message.state))return;
@@ -42,6 +42,8 @@ function setupPvpSockets(server){
     }catch(error){console.warn('PVP socket message ignored:',error.message);}});
     socket.on('close',()=>{clearTimeout(timer);const roomSockets=pvpSockets.get(socket.pvpRoom);if(roomSockets){roomSockets.delete(socket);if(!roomSockets.size)pvpSockets.delete(socket.pvpRoom);}});
   });
+  const heartbeat=setInterval(()=>{for(const socket of sockets.clients){if(socket.isAlive===false){socket.terminate();continue;}socket.isAlive=false;socket.ping();}},15000);
+  sockets.on('close',()=>clearInterval(heartbeat));
 }
 async function api(request,response,pathname){
   try{
@@ -87,7 +89,7 @@ async function api(request,response,pathname){
     if(pvpMatch&&request.method==='GET'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       const since=Math.max(0,Number(new URL(request.url,'http://localhost').searchParams.get('since'))||0),data=await store.listPvpEvents(pvpMatch[1],id,since);
-      const snapshot=pvpStates.get(pvpMatch[1])||null;return data?json(response,200,{...data,snapshot}):json(response,404,{error:'대전방을 찾을 수 없습니다.'});
+      const snapshot=pvpStates.get(pvpMatch[1])||null;return data?json(response,200,{...data,snapshot,serverNow:Date.now()}):json(response,404,{error:'대전방을 찾을 수 없습니다.'});
     }
     if(pvpMatch&&pvpMatch[2]==='spawn'&&request.method==='POST'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {unitType,unitData={}}=await readJson(request);
@@ -95,7 +97,7 @@ async function api(request,response,pathname){
       const account=id===developerId?{progress:developerProgress()}:await store.get(id);if(!account)return json(response,401,{error:'계정을 찾을 수 없습니다.'});
       if(!account.progress?.owned?.includes(unitType)&&!['runner','tank','fighter','mage'].includes(unitType))return json(response,403,{error:'보유하지 않은 고양이입니다.'});
       const safeData=['hp','maxHp','damage','heal'].reduce((result,key)=>{const value=Math.round(Number(unitData?.[key]||0));if(value>=0&&value<=100000)result[key]=value;return result;},{});
-      const event=await store.sendPvpUnit(pvpMatch[1],id,unitType,safeData);if(event)broadcastPvp(pvpMatch[1],{type:'event',event});return event?json(response,201,{event}):json(response,409,{error:'상대의 입장을 기다리거나 끝난 대전입니다.'});
+      const event=await store.sendPvpUnit(pvpMatch[1],id,unitType,safeData);if(event)broadcastPvp(pvpMatch[1],{type:'event',event});return event?json(response,201,{event,serverNow:Date.now()}):json(response,409,{error:'상대의 입장을 기다리거나 끝난 대전입니다.'});
     }
     if(pvpMatch&&pvpMatch[2]==='finish'&&request.method==='POST'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {winnerId,state,version}=await readJson(request);
@@ -236,7 +238,7 @@ async function api(request,response,pathname){
 }
 function handle(request,response){
   const pathname=decodeURIComponent(request.url.split('?')[0]);response.setHeader('X-Content-Type-Options','nosniff');response.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
-  if(pathname==='/health')return json(response,200,{status:'ok',game:'고양이 성채전',database:Boolean(process.env.DATABASE_URL)});if(pathname.startsWith('/api/')){allowApiOrigin(request,response);if(request.method==='OPTIONS'){response.writeHead(204);response.end();return;}return api(request,response,pathname);}
+  if(pathname==='/health')return json(response,200,{status:'ok',game:'고양이 성채전',database:Boolean(process.env.DATABASE_URL),pvpSync:'websocket'});if(pathname.startsWith('/api/')){allowApiOrigin(request,response);if(request.method==='OPTIONS'){response.setHeader('Access-Control-Max-Age','600');response.writeHead(204);response.end();return;}return api(request,response,pathname);}
   const relative=pathname==='/'?'index.html':pathname.replace(/^\/+/,''),file=path.resolve(root,relative);if(!file.startsWith(root+path.sep)){response.writeHead(403).end('Forbidden');return;}
   fs.readFile(file,(error,contents)=>{if(error){response.writeHead(404).end('Not found');return;}let data=contents,host=/^[a-z0-9.-]+(?::\d+)?$/i.test(request.headers.host||'')?request.headers.host:'';if(host&&['.html','.xml','.txt'].includes(path.extname(file))){const forwarded=String(request.headers['x-forwarded-proto']||'').split(',')[0],protocol=forwarded==='https'||forwarded==='http'?forwarded:'http';data=Buffer.from(data.toString('utf8').replaceAll(canonicalUrl,`${protocol}://${host}/`));}response.setHeader('Cache-Control',process.env.NODE_ENV==='production'?(path.extname(file)==='.webp'&&new URL(request.url,'http://localhost').searchParams.get('v')==='20261027'?'public, max-age=31536000, immutable':'public, max-age=300'):'no-store');response.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');response.end(data);});
 }
