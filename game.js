@@ -27,13 +27,28 @@ const CHARACTER_SPRITES = {
   phantom:'phantom.png', paladin:'paladin.png', phoenix:'phoenix.png', cosmic:'cosmic.png',
   emperor:'emperor.png', chronos:'chronos.png'
 };
-const spriteImages = Object.fromEntries(Object.entries(CHARACTER_SPRITES).map(([type,file]) => {
-  const image = new Image(); image.src = `assets/characters/${file}`; return [type,image];
-}));
+const imageCache=new Map(),imageQueue=[];
+let activeImageLoads=0;
+function loadGameImage(source,priority='high'){
+  source=source.replace(/\.png$/,'.webp');
+  if(imageCache.has(source))return imageCache.get(source);
+  const image=new Image();image.decoding='async';image.fetchPriority=priority;
+  imageCache.set(source,image);
+  const job=()=>{
+    activeImageLoads++;
+    const done=()=>{activeImageLoads--;pumpImageQueue();if(!game?.running)draw();};
+    image.onload=done;
+    image.onerror=()=>{image.onload=done;image.onerror=done;image.src=source.replace(/\.webp$/,'.png');};
+    image.src=`${source}?v=20261027`;
+  };
+  if(priority==='high')imageQueue.unshift(job);else imageQueue.push(job);
+  pumpImageQueue();return image;
+}
+function pumpImageQueue(){while(activeImageLoads<4&&imageQueue.length)imageQueue.shift()();}
+function lazyGameImages(entries){const images={};for(const [key,source]of entries)Object.defineProperty(images,key,{enumerable:true,get:()=>loadGameImage(source)});return images;}
+const spriteImages=lazyGameImages(Object.entries(CHARACTER_SPRITES).map(([type,file])=>[type,`assets/characters/${file}`]));
 const ENEMY_SPRITES = {pup:'pup.png',boar:'boar.png',bird:'bird.png',snake:'snake.png',gorilla:'gorilla.png',rhino:'rhino.png',ghost:'ghost.png',mech:'mech.png',demon:'demon.png',wolf:'wolf.png',crab:'crab.png',bat:'bat.png',golem:'golem.png',sorcerer:'sorcerer.png',hyena:'hyena.png',guardian:'guardian.png',cannon:'cannon.png',reaper:'reaper.png',leviathan:'leviathan.png',overlord:'overlord.png',godOverlord:'god-overlord.png'};
-const enemyImages = Object.fromEntries(Object.entries(ENEMY_SPRITES).map(([type,file]) => {
-  const image = new Image(); image.src = `assets/enemies/${file}`; return [type,image];
-}));
+const enemyImages=lazyGameImages(Object.entries(ENEMY_SPRITES).map(([type,file])=>[type,`assets/enemies/${file}`]));
 
 const UNIT_TYPES = {
   runner: { cost: 50, hp: 80, damage: 14, speed: 58, range: 34, cooldown: 1.2, rate: .65, color: '#fff0bd', label: '날쌘냥', rarity:'기본' },
@@ -135,9 +150,8 @@ const STAGE_THEMES = [
   { sky1:'#03040f',sky2:'#18255d',ground:'#242342',hill:'#111126',accent:'#ffe875',kind:'space' }
 ];
 const STAGE_BACKGROUNDS=Array.from({length:20},(_,index)=>`assets/backgrounds/stage-${String(index+1).padStart(2,'0')}.png`);
-const stageBackgroundImages=STAGE_BACKGROUNDS.map(source=>{const image=new Image();image.src=source;return image;});
-const pvpBackgroundImage=new Image();pvpBackgroundImage.src='assets/backgrounds/pvp-arena.png';
-const baseImages={player:new Image(),enemy:new Image()};baseImages.player.src='assets/backgrounds/player-castle.png';baseImages.enemy.src='assets/backgrounds/enemy-castle.png';
+const stageBackgroundImages=lazyGameImages(STAGE_BACKGROUNDS.map((source,index)=>[index,source]));
+const baseImages=lazyGameImages([['player','assets/backgrounds/player-castle.png'],['enemy','assets/backgrounds/enemy-castle.png']]);
 const BASIC_UNITS = ['runner','tank','fighter','mage'];
 const RARITY_RANK = {'기본':0,'노멀':1,'EX':2,'레어':3,'슈퍼 레어':4,'울트라 슈퍼 레어':5,'레전드 레어':6};
 const GACHA_POOLS = {
@@ -443,6 +457,10 @@ function loadProgress(serverProgress=null){
 let saveTimer;
 function saveProgress(){if(!isDeveloperAccount()){localStorage.setItem(progressKey(),JSON.stringify(progress));if(!authToken.startsWith('local:')){clearTimeout(saveTimer);saveTimer=setTimeout(()=>apiRequest('/api/progress',{method:'PUT',body:JSON.stringify({progress})}).catch(error=>console.error('Server save failed:',error.message)),150);}}renderMeta();}
 function renderMeta(){
+  loadGameImage(STAGE_BACKGROUNDS[selectedStage]);
+  progress.loadout.forEach(type=>loadGameImage(`assets/characters/${CHARACTER_SPRITES[type]}`));
+  (ENEMY_STAGE_POOLS[selectedStage]||[]).forEach(type=>loadGameImage(`assets/enemies/${ENEMY_SPRITES[type]}`,'low'));
+  if(BOSS_STAGES[selectedStage])loadGameImage(`assets/enemies/${ENEMY_SPRITES[BOSS_STAGES[selectedStage]]}`,'low');
   $('#gold').textContent=isDeveloperAccount()?'∞':progress.gold.toLocaleString();
   $('#stage-picker').innerHTML=STAGES.map((s,i)=>`<button class="stage-button ${i===selectedStage?'selected':''}" data-stage="${i}" ${i>progress.highestStage?'disabled':''}>${i+1}${progress.cleared.includes(i)?' ✓':''}</button>`).join('');
   document.querySelectorAll('.stage-button').forEach(b=>b.onclick=()=>{selectedStage=Number(b.dataset.stage);renderMeta();});
@@ -459,7 +477,7 @@ function unitPortrait(type){
   const file=CHARACTER_SPRITES[type],sheet=SPRITE_FRAMES[type];
   if(!file||!sheet)return `<span class="unit-portrait ${type}">${unitIcon(type)}</span>`;
   const [x,y,w,h]=sheet.frames[0],pad=Math.max(w,h)*.045;
-  return `<span class="unit-portrait sprite"><svg viewBox="${x-pad} ${y-pad} ${w+pad*2} ${h+pad*2}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}" overflow="hidden"><image href="assets/characters/${file}" width="${sheet.width}" height="${sheet.height}"/></svg></svg></span>`;
+  return `<span class="unit-portrait sprite"><svg viewBox="${x-pad} ${y-pad} ${w+pad*2} ${h+pad*2}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}" overflow="hidden"><image href="assets/characters/${file.replace(/\.png$/,'.webp')}?v=20261027" width="${sheet.width}" height="${sheet.height}"/></svg></svg></span>`;
 }
 function rarityClass(rarity){return rarity==='레전드 레어'?'legend':rarity==='울트라 슈퍼 레어'?'ultra':rarity==='슈퍼 레어'?'super':rarity==='레어'?'rare':rarity==='EX'?'ex':'normal';}
 function renderCollection(){if(!$('#collection'))return;$('#collection').innerHTML=GACHA_UNITS.map(type=>{const u=UNIT_TYPES[type],owned=progress.owned.includes(type);return `<span class="${owned?'owned':''}"><b>${u.rarity}</b>${owned?u.label:'???'}<br>${owned?`Lv.${progress.levels[type]}`:'미획득'}</span>`;}).join('');}
@@ -633,7 +651,7 @@ function groundY(){return (game?.mode==='pvp'?PVP_WORLD_HEIGHT:(canvas.viewHeigh
 function drawScene(w,h){ctx.save();if(game?.shake&&game.mode!=='pvp')ctx.translate((Math.random()-.5)*game.shake,(Math.random()-.5)*game.shake);drawBackground(w,h);drawBase(55,groundY(),true,game?.playerHp??2500);drawBase(w-55,groundY(),false,game?.enemyHp??2500);if(game){game.units.forEach(drawUnit);game.enemies.forEach(drawEnemy);game.projectiles.forEach(drawProjectile);game.particles.forEach(drawParticle);if(game.bossRageWarning>0){ctx.fillStyle='#ff394f';ctx.font=`${Math.min(38,w/16)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(`${game.bossName} 광폭화!`,w/2,70);}else if(game.bossWarning>0){ctx.fillStyle=game.bossDefeated?'#ffe56e':'#ff64db';ctx.font=`${Math.min(34,w/18)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.fillText(game.bossDefeated?`${game.bossName} 격파!`:`${game.bossName} 강림!`,w/2,70);}}ctx.restore();}
 function draw(){const w=canvas.viewWidth||800,h=canvas.viewHeight||400;ctx.clearRect(0,0,w,h);if(game?.mode==='pvp'){ctx.fillStyle='#11172a';ctx.fillRect(0,0,w,h);const scale=Math.min(w/PVP_WORLD_WIDTH,h/PVP_WORLD_HEIGHT),left=(w-PVP_WORLD_WIDTH*scale)/2,top=(h-PVP_WORLD_HEIGHT*scale)/2;ctx.save();ctx.translate(left,top);ctx.scale(scale,scale);drawScene(PVP_WORLD_WIDTH,PVP_WORLD_HEIGHT);ctx.restore();return;}drawScene(w,h);}
 function drawBackground(w,h){
-  if(game?.mode==='pvp'){if(pvpBackgroundImage.complete&&pvpBackgroundImage.naturalWidth){const scale=Math.max(w/pvpBackgroundImage.naturalWidth,h/pvpBackgroundImage.naturalHeight),width=pvpBackgroundImage.naturalWidth*scale,height=pvpBackgroundImage.naturalHeight*scale;ctx.drawImage(pvpBackgroundImage,(w-width)/2,(h-height)/2,width,height);}else{ctx.fillStyle='#26375d';ctx.fillRect(0,0,w,h);ctx.fillStyle='#48587b';ctx.fillRect(0,h*.72,w,h*.28);}return;}
+  if(game?.mode==='pvp'){const pvpBackgroundImage=loadGameImage('assets/backgrounds/pvp-arena.png');if(pvpBackgroundImage.complete&&pvpBackgroundImage.naturalWidth){const scale=Math.max(w/pvpBackgroundImage.naturalWidth,h/pvpBackgroundImage.naturalHeight),width=pvpBackgroundImage.naturalWidth*scale,height=pvpBackgroundImage.naturalHeight*scale;ctx.drawImage(pvpBackgroundImage,(w-width)/2,(h-height)/2,width,height);}else{ctx.fillStyle='#26375d';ctx.fillRect(0,0,w,h);ctx.fillStyle='#48587b';ctx.fillRect(0,h*.72,w,h*.28);}return;}
   const theme=STAGE_THEMES[selectedStage]||STAGE_THEMES[0],ground=groundY();
   const image=stageBackgroundImages[selectedStage];
   if(image?.complete&&image.naturalWidth){
