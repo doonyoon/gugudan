@@ -23,7 +23,13 @@ async function streamClient(token,roomId){const controller=new AbortController()
     await waitForServer();
     assert.equal(await rejectedSocket(),4003);
     const one=await request('/api/signup',{method:'POST',body:{id:'syncp1',password:'test1234'}}),two=await request('/api/signup',{method:'POST',body:{id:'syncp2',password:'test1234'}});
-    const waiting=await request('/api/pvp/match',{method:'POST',token:one.token}),joined=await request('/api/pvp/match',{method:'POST',token:two.token});
+    const waiting=await request('/api/pvp/rooms',{method:'POST',token:one.token});
+    assert.match(waiting.room.room_code,/^[A-Z2-9]{6}$/);assert.equal(waiting.room.status,'waiting');
+    const quick=await request('/api/pvp/match',{method:'POST',token:two.token});
+    assert.notEqual(quick.room.id,waiting.room.id);assert.equal(quick.room.room_code,null);assert.equal(quick.room.status,'waiting');
+    await request(`/api/pvp/rooms/${quick.room.id}/cancel`,{method:'POST',token:two.token});
+    await assert.rejects(request('/api/pvp/rooms/join',{method:'POST',token:two.token,body:{code:'ZZZZZZ'}}),/404/);
+    const joined=await request('/api/pvp/rooms/join',{method:'POST',token:two.token,body:{code:waiting.room.room_code.toLowerCase()}});
     assert.equal(waiting.room.id,joined.room.id);assert.equal(joined.room.status,'active');
     const [clientOne,clientTwo,streamTwo]=await Promise.all([socketClient(one.token,joined.room.id),socketClient(two.token,joined.room.id),streamClient(two.token,joined.room.id)]);assert.equal(typeof clientOne.messages[0].serverNow,'number');assert.equal(typeof streamTwo.messages[0].serverNow,'number');
     const state={time:3.25,playerHp:5100,playerMaxHp:5200,enemyHp:4900,enemyMaxHp:5200,units:[{id:'pvp-1',unitType:'runner',side:'cat',x:140,y:400,hp:100,maxHp:100}],enemies:[],projectiles:[],particles:[]};
@@ -31,9 +37,9 @@ async function streamClient(token,roomId){const controller=new AbortController()
     const [snapshotOne,snapshotTwo,streamSnapshot]=await Promise.all([waitFor(clientOne.messages,item=>item.type==='snapshot'),waitFor(clientTwo.messages,item=>item.type==='snapshot'),waitFor(streamTwo.messages,item=>item.type==='snapshot')]);
     assert.deepEqual(snapshotOne.state,snapshotTwo.state);assert.equal(snapshotTwo.state.units[0].x,140);
     assert.deepEqual(streamSnapshot.state,snapshotTwo.state);
-    await request(`/api/pvp/rooms/${joined.room.id}/spawn`,{method:'POST',token:two.token,body:{unitType:'runner',unitData:{hp:100,maxHp:100,damage:10,heal:0}}});
+    await request(`/api/pvp/rooms/${joined.room.id}/spawn`,{method:'POST',token:two.token,body:{unitType:'chronos',unitData:{hp:100,maxHp:100,damage:10,heal:0}}});
     const [eventOne,eventTwo]=await Promise.all([waitFor(clientOne.messages,item=>item.type==='event'),waitFor(clientTwo.messages,item=>item.type==='event')]);
-    assert.equal(eventOne.event.id,eventTwo.event.id);assert.equal(eventOne.event.player_id,'syncp2');
+    assert.equal(eventOne.event.id,eventTwo.event.id);assert.equal(eventOne.event.player_id,'syncp2');assert.equal(eventOne.event.unit_type,'chronos');
     const fallback=await request(`/api/pvp/rooms/${joined.room.id}?since=0`,{token:two.token});assert.deepEqual(fallback.snapshot.state,state);assert.equal(typeof fallback.serverNow,'number');
     const roomPath=`/api/pvp/rooms/${joined.room.id}`;
     await assert.rejects(request(`${roomPath}/snapshot`,{method:'POST',token:two.token,body:{state,version:2}}),/403/);

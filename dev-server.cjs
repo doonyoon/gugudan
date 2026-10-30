@@ -11,6 +11,7 @@ function json(response,status,payload){response.writeHead(status,{'Content-Type'
 function allowApiOrigin(request,response){const origin=String(request.headers.origin||''),allowed=origin==='https://doonyoon.github.io'||/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);if(allowed){response.setHeader('Access-Control-Allow-Origin',origin);response.setHeader('Vary','Origin');response.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');response.setHeader('Access-Control-Allow-Methods','GET, POST, PUT, DELETE, OPTIONS');}}
 function readJson(request){return new Promise((resolve,reject)=>{let body='';request.on('data',chunk=>{body+=chunk;if(body.length>150000){reject(new Error('too_large'));request.destroy();}});request.on('end',()=>{try{resolve(body?JSON.parse(body):{});}catch{reject(new Error('invalid_json'));}});request.on('error',reject);});}
 function validId(id){return typeof id==='string'&&/^[A-Za-z0-9가-힣_]{3,16}$/.test(id);}
+function normalizePvpRoomCode(value){const code=String(value||'').trim().toUpperCase();return /^[A-Z2-9]{6}$/.test(code)?code:'';}
 function tokenFrom(request){return String(request.headers.authorization||'').replace(/^Bearer\s+/i,'');}
 function userFromToken(token){try{const [payload,signature]=String(token||'').split('.'),expected=crypto.createHmac('sha256',sessionSecret).update(payload).digest('base64url');if(!signature||signature.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))return null;const session=JSON.parse(Buffer.from(payload,'base64url').toString());return session.expires>Date.now()?session.id:null;}catch{return null;}}
 function tokenUser(request){return userFromToken(tokenFrom(request));}
@@ -75,6 +76,14 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       const room=cachePvpRoom(await store.joinPvp(id));if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
     }
+    if(request.method==='POST'&&pathname==='/api/pvp/rooms'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      const room=cachePvpRoom(await store.createPvpRoom(id));if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,201,{room});
+    }
+    if(request.method==='POST'&&pathname==='/api/pvp/rooms/join'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {code}=await readJson(request),roomCode=normalizePvpRoomCode(code);if(!roomCode)return json(response,400,{error:'방 코드는 영문과 숫자 6자리로 입력해 주세요.'});
+      const room=cachePvpRoom(await store.joinPvpRoom(id,roomCode));if(!room)return json(response,404,{error:'입장할 수 있는 방을 찾지 못했습니다.'});if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
+    }
     const pvpCancel=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})\/cancel$/i);
     if(pvpCancel&&request.method==='POST'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
@@ -104,7 +113,6 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {unitType,unitData={}}=await readJson(request);
       if(!pvpUnits.has(unitType))return json(response,400,{error:'사용할 수 없는 고양이입니다.'});
       const account=id===developerId?{progress:developerProgress()}:await store.get(id);if(!account)return json(response,401,{error:'계정을 찾을 수 없습니다.'});
-      if(!account.progress?.owned?.includes(unitType)&&!['runner','tank','fighter','mage'].includes(unitType))return json(response,403,{error:'보유하지 않은 고양이입니다.'});
       const safeData=['hp','maxHp','damage','heal'].reduce((result,key)=>{const value=Math.round(Number(unitData?.[key]||0));if(value>=0&&value<=100000)result[key]=value;return result;},{});
       const event=await store.sendPvpUnit(pvpMatch[1],id,unitType,safeData);if(event)broadcastPvp(pvpMatch[1],{type:'event',event});return event?json(response,201,{event,serverNow:Date.now()}):json(response,409,{error:'상대의 입장을 기다리거나 끝난 대전입니다.'});
     }

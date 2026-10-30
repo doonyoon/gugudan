@@ -243,7 +243,23 @@
     <h2>⚔ 실시간 1대1 대전</h2>
     <p>서로 고양이를 소환해 상대 성을 먼저 부수면 승리합니다.</p>
     <p id="pvp-status" class="pvp-status">빠른 매칭을 눌러 상대를 찾으세요.</p>
-    <button id="pvp-match-button" class="main-button" type="button">빠른 매칭</button>
+    <div class="pvp-actions">
+      <button id="pvp-match-button" class="main-button" type="button">빠른 매칭</button>
+      <span class="pvp-divider">또는</span>
+      <button id="pvp-create-room-button" class="pvp-create-room-button" type="button">방 만들기</button>
+      <div id="pvp-room-code-box" class="pvp-room-code-box hidden">
+        <small>친구에게 이 방 코드를 알려주세요</small>
+        <strong id="pvp-room-code">------</strong>
+        <button id="pvp-copy-code-button" type="button">코드 복사</button>
+      </div>
+      <form id="pvp-join-form" class="pvp-join-form">
+        <label for="pvp-room-code-input">방 코드로 입장</label>
+        <div>
+          <input id="pvp-room-code-input" maxlength="6" inputmode="text" autocomplete="off" placeholder="예: CAT777" required>
+          <button type="submit">입장</button>
+        </div>
+      </form>
+    </div>
     <button id="pvp-cancel-button" class="pvp-cancel-button hidden" type="button">매칭 취소</button>
   </dialog>
   <dialog id="admin-dialog" class="admin-dialog">
@@ -267,6 +283,6 @@
   <iframe id="bgm-player" class="bgm-player" title="게임 배경음악" allow="autoplay"></iframe>
   <audio id="final-stage-bgm" class="bgm-player" src="assets/audio/stage-20-green-sans.mp3" loop preload="auto"></audio>
   <script src="sprite-frames.js?v=20260929-sprites3"></script>
-  <script src="game.js?v=20261027-pvp-smooth2"></script>
+  <script src="game.js?v=20261030-pvp-rooms1"></script>
 </body>
 </html>

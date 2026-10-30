@@ -218,6 +218,10 @@ $('#close-ranking').addEventListener('click', () => $('#ranking-dialog').close()
 $('#pvp-button').addEventListener('click', openPvp);
 $('#close-pvp').addEventListener('click', () => $('#pvp-dialog').close());
 $('#pvp-match-button').addEventListener('click', joinPvpMatch);
+$('#pvp-create-room-button').addEventListener('click', createPvpRoom);
+$('#pvp-join-form').addEventListener('submit', joinPvpRoom);
+$('#pvp-copy-code-button').addEventListener('click', copyPvpRoomCode);
+$('#pvp-room-code-input').addEventListener('input', event => { event.target.value=event.target.value.toUpperCase().replace(/[^A-Z2-9]/g,'').slice(0,6); });
 $('#pvp-cancel-button').addEventListener('click', cancelPvpMatch);
 $('#friends-button').addEventListener('click', openFriends);
 $('#close-friends').addEventListener('click', () => $('#friends-dialog').close());
@@ -362,27 +366,47 @@ async function openRanking(){
 function clearPvpPolling(){if(pvpPollTimer){clearInterval(pvpPollTimer);pvpPollTimer=null;}}
 function closePvpSync(){clearTimeout(pvpSocketReadyTimer);pvpSocketReadyTimer=null;pvpReconnectAttempts=0;pvpStreamReconnectAttempts=0;pvpStreamConnected=false;pvpLastStreamMessageAt=0;if(pvpStreamController){const controller=pvpStreamController;pvpStreamController=null;controller.abort();}if(pvpSocket){const socket=pvpSocket;pvpSocket=null;pvpSocketReady=false;try{socket.close();}catch{}}}
 function pvpOpponent(room=pvpRoom){return room?.player_one===activeUser?room.player_two:room?.player_one;}
-function openPvp(){if(game?.running){window.alert('진행 중인 전투를 끝낸 뒤 대전을 시작해 주세요.');return;}const waiting=pvpRoom?.status==='waiting';$('#pvp-status').textContent=waiting?'상대를 찾는 중입니다. 다른 회원이 입장하면 자동으로 시작됩니다.':'빠른 매칭을 눌러 상대를 찾으세요.';$('#pvp-match-button').disabled=waiting;$('#pvp-cancel-button').classList.toggle('hidden',!waiting);$('#pvp-dialog').showModal();}
-async function joinPvpMatch(){
-  const button=$('#pvp-match-button');button.disabled=true;$('#pvp-status').textContent='대전방을 찾는 중...';
-  try{const data=await apiRequest('/api/pvp/match',{method:'POST'});pvpRoom=data.room;pvpEventCursor=0;if(pvpRoom.status==='active')startPvpBattle(pvpRoom);else{$('#pvp-status').textContent='상대를 기다리는 중... 다른 회원이 실시간 대전 버튼을 누르면 시작됩니다.';$('#pvp-cancel-button').classList.remove('hidden');clearPvpPolling();pvpPollTimer=setInterval(pollPvpRoom,250);}}catch(error){button.disabled=false;$('#pvp-status').textContent=error.message;}
+function setPvpWaitingControls(waiting=false){
+  $('#pvp-match-button').disabled=waiting;$('#pvp-create-room-button').disabled=waiting;$('#pvp-room-code-input').disabled=waiting;$('#pvp-join-form button').disabled=waiting;$('#pvp-cancel-button').classList.toggle('hidden',!waiting);
+  if(!waiting){$('#pvp-room-code-box').classList.add('hidden');$('#pvp-room-code').textContent='------';}
 }
-async function cancelPvpMatch(){if(!pvpRoom||pvpRoom.status!=='waiting')return;const roomId=pvpRoom.id;try{await apiRequest(`/api/pvp/rooms/${roomId}/cancel`,{method:'POST'});if(pvpRoom?.id!==roomId)return;clearPvpPolling();closePvpSync();pvpRoom=null;pvpEventCursor=0;game=null;cancelAnimationFrame(animationId);resetBattleLabels();$('#training-panel').classList.add('hidden');$('#exit-battle').classList.add('hidden');$('#start-overlay').classList.remove('hidden');$('#pvp-status').textContent='매칭을 취소했습니다.';$('#pvp-match-button').disabled=false;$('#pvp-cancel-button').classList.add('hidden');}catch(error){$('#pvp-status').textContent=error.message;pollPvpRoom();}}
+function showPvpWaiting(room){
+  const code=room?.room_code||'';setPvpWaitingControls(true);$('#pvp-room-code-box').classList.toggle('hidden',!code);$('#pvp-room-code').textContent=code||'------';$('#pvp-status').textContent=code?`방 코드 ${code} · 친구가 코드를 입력하면 자동으로 시작됩니다.`:'빠른 매칭 중입니다. 상대가 참가하면 자동으로 시작됩니다.';clearPvpPolling();pvpPollTimer=setInterval(pollPvpRoom,250);
+}
+function resetPvpWaiting(message='빠른 매칭 또는 방 코드로 대전을 시작하세요.'){setPvpWaitingControls(false);$('#pvp-status').textContent=message;}
+function openPvp(){if(game?.running){window.alert('진행 중인 전투를 끝낸 뒤 대전을 시작해 주세요.');return;}if(pvpRoom?.status==='waiting')showPvpWaiting(pvpRoom);else resetPvpWaiting();$('#pvp-dialog').showModal();}
+function acceptPvpRoom(room){pvpRoom=room;pvpEventCursor=0;if(room.status==='active')startPvpBattle(room);else showPvpWaiting(room);}
+async function joinPvpMatch(){
+  setPvpWaitingControls(true);$('#pvp-status').textContent='빠른 대전 상대를 찾는 중...';
+  try{const data=await apiRequest('/api/pvp/match',{method:'POST'});acceptPvpRoom(data.room);}catch(error){resetPvpWaiting(error.message);}
+}
+async function createPvpRoom(){
+  setPvpWaitingControls(true);$('#pvp-status').textContent='친구 대전방을 만드는 중...';
+  try{const data=await apiRequest('/api/pvp/rooms',{method:'POST'});acceptPvpRoom(data.room);}catch(error){resetPvpWaiting(error.message);}
+}
+async function joinPvpRoom(event){
+  event.preventDefault();const input=$('#pvp-room-code-input'),code=input.value.trim().toUpperCase();if(!/^[A-Z2-9]{6}$/.test(code)){resetPvpWaiting('방 코드는 영문과 숫자 6자리입니다.');input.focus();return;}setPvpWaitingControls(true);$('#pvp-status').textContent=`방 ${code}에 입장하는 중...`;
+  try{const data=await apiRequest('/api/pvp/rooms/join',{method:'POST',body:JSON.stringify({code})});acceptPvpRoom(data.room);}catch(error){resetPvpWaiting(error.message);}
+}
+async function copyPvpRoomCode(){const code=$('#pvp-room-code').textContent;if(!/^[A-Z2-9]{6}$/.test(code))return;try{await navigator.clipboard.writeText(code);$('#pvp-status').textContent=`방 코드 ${code}를 복사했습니다.`;}catch{$('#pvp-status').textContent=`방 코드: ${code}`;}}
+async function cancelPvpMatch(){if(!pvpRoom||pvpRoom.status!=='waiting')return;const roomId=pvpRoom.id;try{await apiRequest(`/api/pvp/rooms/${roomId}/cancel`,{method:'POST'});if(pvpRoom?.id!==roomId)return;clearPvpPolling();closePvpSync();pvpRoom=null;pvpEventCursor=0;game=null;cancelAnimationFrame(animationId);resetBattleLabels();$('#training-panel').classList.add('hidden');$('#exit-battle').classList.add('hidden');$('#start-overlay').classList.remove('hidden');resetPvpWaiting('매칭을 취소했습니다.');}catch(error){$('#pvp-status').textContent=error.message;pollPvpRoom();}}
 async function pollPvpRoom(){
   if(!pvpRoom||pvpPollBusy)return;if(game?.running&&game.mode==='pvp'&&pvpStreamConnected&&Date.now()-pvpLastStreamMessageAt<PVP_STREAM_STALE_MS)return;const roomId=pvpRoom.id;pvpPollBusy=true;try{const data=await apiRequest(`/api/pvp/rooms/${roomId}?since=${pvpEventCursor}`);if(pvpRoom?.id!==roomId)return;syncPvpServerClock(data.serverNow);pvpRoom=data.room;
     if(pvpRoom.status==='active'&&(!game||!game.running||game.mode!=='pvp'))startPvpBattle(pvpRoom);
     for(const event of data.events||[]){pvpEventCursor=Math.max(pvpEventCursor,Number(event.id)||0);if(game?.mode==='pvp')queuePvpSpawn(event);}
     if(!isPvpPlayerOne()&&data.snapshot?.state)applyPvpSnapshot(data.snapshot);
     if(pvpRoom.status==='finished'&&game?.running&&game.mode==='pvp')completePvpBattle(pvpRoom.winner_id===activeUser);
-    if(pvpRoom.status==='cancelled'){clearPvpPolling();pvpRoom=null;pvpEventCursor=0;$('#pvp-status').textContent='매칭이 취소되었습니다.';$('#pvp-match-button').disabled=false;$('#pvp-cancel-button').classList.add('hidden');}
+    if(pvpRoom.status==='cancelled'){clearPvpPolling();pvpRoom=null;pvpEventCursor=0;resetPvpWaiting('매칭이 취소되었습니다.');}
   }catch(error){$('#pvp-status').textContent=`연결 재시도 중: ${error.message}`;}finally{pvpPollBusy=false;}
 }
-function createPvpGame(room){const hp=5200;return {running:true,mode:'pvp',roomId:room.id,time:0,money:700,maxMoney:2200,income:72,workerLevel:1,playerHp:hp,playerMaxHp:hp,enemyHp:hp,enemyMaxHp:hp,enemyTimer:Infinity,enemySpawn:Infinity,enemyScale:1,spawnCount:0,bossType:null,bossName:'',bossSpawned:false,bossDefeated:true,bossWarning:0,bossRageWarning:0,units:[],enemies:[],particles:[],projectiles:[],cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])),training:Object.fromEntries(progress.loadout.map(type=>[type,0])),autoSummon:Object.fromEntries(progress.loadout.map(type=>[type,false])),pendingSpawns:0,shake:0,result:null};}
+function pvpAvailableUnitTypes(){return Object.keys(UNIT_TYPES);}
+function battleUnitTypes(){return game?.running&&game.mode==='pvp'?pvpAvailableUnitTypes():progress.loadout;}
+function createPvpGame(room){const hp=5200,types=pvpAvailableUnitTypes();return {running:true,mode:'pvp',roomId:room.id,time:0,money:700,maxMoney:2200,income:72,workerLevel:1,playerHp:hp,playerMaxHp:hp,enemyHp:hp,enemyMaxHp:hp,enemyTimer:Infinity,enemySpawn:Infinity,enemyScale:1,spawnCount:0,bossType:null,bossName:'',bossSpawned:false,bossDefeated:true,bossWarning:0,bossRageWarning:0,units:[],enemies:[],particles:[],projectiles:[],cooldowns:Object.fromEntries(types.map(type=>[type,0])),training:Object.fromEntries(types.map(type=>[type,0])),autoSummon:Object.fromEntries(types.map(type=>[type,false])),pendingSpawns:0,shake:0,result:null};}
 function resetBattleSpeed(){battleSpeed=1;battleSpeedButton.textContent='1배속';battleSpeedButton.setAttribute('aria-pressed','false');battleSpeedButton.style.backgroundColor='';battleSpeedButton.style.color='';}
 function isPvpPlayerOne(){return pvpRoom?.player_one===activeUser;}
 function setPvpLabels(room){document.querySelector('.enemy-status span').textContent=`${room.player_one}${room.player_one===activeUser?' (나)':' (상대)'}`;document.querySelector('.player-status span').textContent=`${room.player_two}${room.player_two===activeUser?' (나)':' (상대)'}`;}
 function resetBattleLabels(){document.querySelector('.enemy-status span').textContent='적 요새';document.querySelector('.player-status span').textContent='우리 성채';}
-function startPvpBattle(room){clearPvpPolling();closePvpSync();pvpRoom=room;pvpScheduledEvents=new Set();pvpSnapshotVersion=0;pvpAppliedVersion=0;pvpLastSnapshotAt=0;pvpServerOffset=0;resetBattleSpeed();battleSpeedButton.classList.add('hidden');$('#pvp-dialog').close();initAudio();setBgmTrack(LOBBY_BGM_ID);resizeCanvas();game=createPvpGame(room);setPvpLabels(room);$('#stage-label').textContent=`${room.player_one} VS ${room.player_two}`;$('#start-overlay').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#exit-battle').classList.remove('hidden');$('#training-panel').classList.remove('hidden');renderTraining();connectPvpStream();lastTime=performance.now();cancelAnimationFrame(animationId);animationId=requestAnimationFrame(loop);pvpPollTimer=setInterval(pollPvpRoom,PVP_FALLBACK_POLL_MS);pollPvpRoom();playJingle([392,523,659]);}
+function startPvpBattle(room){clearPvpPolling();closePvpSync();pvpRoom=room;pvpScheduledEvents=new Set();pvpSnapshotVersion=0;pvpAppliedVersion=0;pvpLastSnapshotAt=0;pvpServerOffset=0;resetBattleSpeed();battleSpeedButton.classList.add('hidden');$('#pvp-dialog').close();initAudio();setBgmTrack(LOBBY_BGM_ID);resizeCanvas();game=createPvpGame(room);setPvpLabels(room);$('#stage-label').textContent=`${room.player_one} VS ${room.player_two}`;$('#start-overlay').classList.add('hidden');$('#battle-message').classList.add('hidden');$('#exit-battle').classList.remove('hidden');$('#training-panel').classList.remove('hidden');renderDeck();renderTraining();connectPvpStream();lastTime=performance.now();cancelAnimationFrame(animationId);animationId=requestAnimationFrame(loop);pvpPollTimer=setInterval(pollPvpRoom,PVP_FALLBACK_POLL_MS);pollPvpRoom();playJingle([392,523,659]);}
 function syncPvpServerClock(serverNow){const value=Number(serverNow);if(Number.isFinite(value)&&value>0)pvpServerOffset=value-Date.now();}
 function handlePvpRealtimeMessage(message,roomId){if(pvpRoom?.id!==roomId)return;pvpStreamConnected=true;pvpLastStreamMessageAt=Date.now();syncPvpServerClock(message.serverNow);if(message.type==='ready'){pvpStreamReconnectAttempts=0;if(!isPvpPlayerOne()&&message.state?.state)applyPvpSnapshot(message.state);return;}if(message.type==='event'){queuePvpSpawn(message.event);return;}if(message.type==='snapshot'&&!isPvpPlayerOne()){applyPvpSnapshot(message);return;}if(message.type==='room'){if(message.room?.id!==roomId)return;if(!isPvpPlayerOne()&&message.snapshot)applyPvpSnapshot(message.snapshot);pvpRoom=message.room;if(pvpRoom.status==='finished'&&game?.running)completePvpBattle(pvpRoom.winner_id===activeUser);}}
 async function connectPvpStream(){
@@ -480,7 +504,7 @@ function renderMeta(){
   renderDeck();renderCollection();
 }
 function renderDeck(){
-  $('#unit-deck').innerHTML=progress.loadout.map(type=>{const u=UNIT_TYPES[type],auto=Boolean(game?.running&&game.autoSummon?.[type]);return `<button class="unit-card ${auto?'auto-summon':''}" data-unit="${type}" type="button" title="클릭: 소환 · 우클릭: 자동 소환 켜기/끄기" aria-pressed="${auto}"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i>${unitPortrait(type)}<strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
+  const types=battleUnitTypes(),deck=$('#unit-deck');deck.classList.toggle('pvp-all-units',Boolean(game?.running&&game.mode==='pvp'));deck.innerHTML=types.map(type=>{const u=UNIT_TYPES[type],auto=Boolean(game?.running&&game.autoSummon?.[type]);return `<button class="unit-card ${auto?'auto-summon':''}" data-unit="${type}" type="button" title="클릭: 소환 · 우클릭: 자동 소환 켜기/끄기" aria-pressed="${auto}"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i>${unitPortrait(type)}<strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
   unitButtons=[...document.querySelectorAll('.unit-card')];unitButtons.forEach(b=>{b.addEventListener('click',()=>summon(b.dataset.unit));b.addEventListener('contextmenu',toggleAutoSummon);});
 }
 function toggleAutoSummon(event){event.preventDefault();if(!game?.running)return;const button=event.currentTarget,type=button.dataset.unit;game.autoSummon[type]=!game.autoSummon[type];button.classList.toggle('auto-summon',game.autoSummon[type]);button.setAttribute('aria-pressed',String(game.autoSummon[type]));playTone(game.autoSummon[type]?660:220,.08,'triangle',.06);}
@@ -643,7 +667,7 @@ function upgradeWorker(){ if(!game?.running||game.workerLevel>=8)return;const co
 function workerCost(){return 120+(game?.workerLevel||1)*70;}
 function trainingCost(type){const level=game?.training[type]||0;return Math.round((60+UNIT_TYPES[type].cost*.35)*Math.pow(1.45,level)/10)*10;}
 function renderTraining(){
-  if(!game)return;$('#upgrade-deck').innerHTML=progress.loadout.map(type=>`<button class="upgrade-button" data-upgrade="${type}" type="button"><strong>${UNIT_TYPES[type].label} +${game.training[type]}</strong><span>${game.training[type]>=5?'MAX':`${trainingCost(type)} 🐟`}</span></button>`).join('');
+  if(!game)return;$('#upgrade-deck').innerHTML=battleUnitTypes().map(type=>`<button class="upgrade-button" data-upgrade="${type}" type="button"><strong>${UNIT_TYPES[type].label} +${game.training[type]}</strong><span>${game.training[type]>=5?'MAX':`${trainingCost(type)} 🐟`}</span></button>`).join('');
   document.querySelectorAll('.upgrade-button').forEach(button=>button.onclick=()=>upgradeUnit(button.dataset.upgrade));
 }
 function upgradeUnit(type){
