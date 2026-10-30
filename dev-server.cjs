@@ -121,7 +121,8 @@ async function api(request,response,pathname){
     if(pvpMatch&&pvpMatch[2]==='skill'&&request.method==='POST'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {unitId}=await readJson(request),normalized=String(unitId||'');
       if(!/^pvp-\d+$/.test(normalized))return json(response,400,{error:'올바르지 않은 괴도냥입니다.'});const account=id===developerId?{progress:developerProgress()}:await store.get(id);if(!account?.progress?.owned?.includes('thief'))return json(response,403,{error:'괴도냥을 보유하지 않았습니다.'});
-      const cooldownKey=`${pvpMatch[1]}:${id}`,now=Date.now(),last=pvpSkillTimes.get(cooldownKey)||0;if(now-last<25000)return json(response,429,{error:'괴도냥 스킬 재사용 대기 중입니다.'});
+      const battle=await store.listPvpEvents(pvpMatch[1],id,0),ownsUnit=battle?.events?.some(item=>item.player_id===id&&item.unit_type==='thief'&&`pvp-${item.id}`===normalized);if(!ownsUnit)return json(response,403,{error:'내가 소환한 괴도냥만 스킬을 사용할 수 있습니다.'});
+      const cooldownKey=`${pvpMatch[1]}:${id}:${normalized}`,now=Date.now(),last=pvpSkillTimes.get(cooldownKey)||0;if(now-last<25000)return json(response,429,{error:'이 괴도냥은 스킬 재사용 대기 중입니다.'});
       const event=await store.sendPvpUnit(pvpMatch[1],id,'thief_skill',{unitId:normalized});if(!event)return json(response,409,{error:'상대의 입장을 기다리거나 끝난 대전입니다.'});pvpSkillTimes.set(cooldownKey,now);broadcastPvp(pvpMatch[1],{type:'event',event});return json(response,201,{event,serverNow:Date.now()});
     }
     if(pvpMatch&&pvpMatch[2]==='finish'&&request.method==='POST'){

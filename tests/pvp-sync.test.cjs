@@ -45,6 +45,9 @@ async function streamClient(token,roomId){const controller=new AbortController()
     const thiefSpawn=await request(`/api/pvp/rooms/${joined.room.id}/spawn`,{method:'POST',token:two.token,body:{unitType:'thief',unitData:{hp:720,maxHp:720,damage:260,skillDamage:1800}}});
     const skill=await request(`/api/pvp/rooms/${joined.room.id}/skill`,{method:'POST',token:two.token,body:{unitId:`pvp-${thiefSpawn.event.id}`}});assert.equal(skill.event.unit_type,'thief_skill');assert.equal(skill.event.unit_data.unitId,`pvp-${thiefSpawn.event.id}`);
     await assert.rejects(request(`/api/pvp/rooms/${joined.room.id}/skill`,{method:'POST',token:two.token,body:{unitId:`pvp-${thiefSpawn.event.id}`}}),/429/);
+    const secondThief=await request(`/api/pvp/rooms/${joined.room.id}/spawn`,{method:'POST',token:two.token,body:{unitType:'thief',unitData:{hp:720,maxHp:720,damage:260,skillDamage:1800}}});
+    const secondSkill=await request(`/api/pvp/rooms/${joined.room.id}/skill`,{method:'POST',token:two.token,body:{unitId:`pvp-${secondThief.event.id}`}});assert.equal(secondSkill.event.unit_data.unitId,`pvp-${secondThief.event.id}`);
+    await assert.rejects(request(`/api/pvp/rooms/${joined.room.id}/skill`,{method:'POST',token:two.token,body:{unitId:'pvp-999999'}}),/403/);
     const fallback=await request(`/api/pvp/rooms/${joined.room.id}?since=0`,{token:two.token});assert.deepEqual(fallback.snapshot.state,state);assert.equal(typeof fallback.serverNow,'number');
     const roomPath=`/api/pvp/rooms/${joined.room.id}`;
     await assert.rejects(request(`${roomPath}/snapshot`,{method:'POST',token:two.token,body:{state,version:2}}),/403/);
