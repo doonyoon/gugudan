@@ -163,7 +163,9 @@ const GACHA_POOLS = {
 const GACHA_RATES = [
   {rarity:'노멀',rate:50},{rarity:'EX',rate:25},{rarity:'레어',rate:9},{rarity:'슈퍼 레어',rate:10.6},{rarity:'울트라 슈퍼 레어',rate:5},{rarity:'레전드 레어',rate:.3},{rarity:'슈퍼 레전드 레어',rate:.1}
 ];
-const GOLDEN_GACHA_RATES = GACHA_RATES.map(item=>({...item,rate:item.rate*(RARITY_RANK[item.rarity]>=RARITY_RANK['레어']?5:1)}));
+const GOLDEN_GACHA_RATES = [
+  {rarity:'노멀',rate:25.15},{rarity:'EX',rate:12.5},{rarity:'레어',rate:22.5},{rarity:'슈퍼 레어',rate:26.5},{rarity:'울트라 슈퍼 레어',rate:12.5},{rarity:'레전드 레어',rate:.75},{rarity:'슈퍼 레전드 레어',rate:.1}
+];
 const GACHA_UNITS = Object.values(GACHA_POOLS).flat();
 const SAVE_KEY = 'cat-fortress-save-v2';
 const AUTH_ACCOUNTS_KEY = 'cat-fortress-accounts-v1';
