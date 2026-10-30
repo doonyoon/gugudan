@@ -171,6 +171,7 @@ const SAVE_KEY = 'cat-fortress-save-v2';
 const AUTH_ACCOUNTS_KEY = 'cat-fortress-accounts-v1';
 const AUTH_SESSION_KEY = 'cat-fortress-session-v1';
 const AUTH_REPAIR_KEY = 'cat-fortress-account-repair-v2';
+const DEVELOPER_LOADOUT_KEY = 'cat-fortress-developer-loadout-v1';
 const DEVELOPER_ID = 'doonyoon';
 const DEVELOPER_PASSWORD = 'kk45537606';
 const API_BASE = location.hostname.endsWith('github.io') ? 'https://goyangi-seongchaejeon.onrender.com' : '';
@@ -283,7 +284,7 @@ function repairDuplicatedAccountSaves(){
 }
 function progressKey(){return activeUser?`${SAVE_KEY}:${activeUser}`:SAVE_KEY;}
 function isDeveloperAccount(){return activeUser===DEVELOPER_ID;}
-function developerProgress(){const owned=Object.keys(UNIT_TYPES);return {gold:Number.MAX_SAFE_INTEGER,highestStage:STAGES.length-1,cleared:STAGES.map((_,index)=>index),owned,loadout:[...BASIC_UNITS],levels:Object.fromEntries(owned.map(type=>[type,99])),redeemedCodes:['9027']};}
+function developerProgress(){const owned=Object.keys(UNIT_TYPES);let loadout=[...BASIC_UNITS];try{const saved=JSON.parse(localStorage.getItem(DEVELOPER_LOADOUT_KEY)||'[]'),valid=[...new Set(saved)].filter(type=>owned.includes(type)).slice(0,4);if(valid.length===4)loadout=valid;}catch{}return {gold:Number.MAX_SAFE_INTEGER,highestStage:STAGES.length-1,cleared:STAGES.map((_,index)=>index),owned,loadout,levels:Object.fromEntries(owned.map(type=>[type,99])),redeemedCodes:['9027']};}
 async function hashPassword(password){const data=new TextEncoder().encode(password);const hash=await crypto.subtle.digest('SHA-256',data);return [...new Uint8Array(hash)].map(value=>value.toString(16).padStart(2,'0')).join('');}
 function authValues(){return {id:$('#auth-id').value.trim(),password:$('#auth-password').value,message:$('#auth-message')};}
 function validAccount(id,password,message){message.className='';if(!/^[A-Za-z0-9가-힣_]{3,16}$/.test(id)){message.textContent='아이디는 3~16자의 한글, 영문, 숫자, 밑줄만 사용할 수 있어요.';return false;}if(password.length<4){message.textContent='비밀번호는 4자 이상 입력하세요.';return false;}return true;}
@@ -406,8 +407,8 @@ async function pollPvpRoom(){
   }catch(error){$('#pvp-status').textContent=`연결 재시도 중: ${error.message}`;}finally{pvpPollBusy=false;}
 }
 function pvpOwnedUnitTypes(){return [...new Set(progress.owned)].filter(type=>UNIT_TYPES[type]);}
-function battleUnitTypes(){return game?.running&&game.mode==='pvp'?pvpOwnedUnitTypes():progress.loadout;}
-function createPvpGame(room){const hp=5200,types=pvpOwnedUnitTypes();types.forEach(type=>void spriteImages[type]);if(types.includes('thief'))void skillSpriteImages.thief;return {running:true,mode:'pvp',roomId:room.id,time:0,money:700,maxMoney:2200,income:72,workerLevel:1,playerHp:hp,playerMaxHp:hp,enemyHp:hp,enemyMaxHp:hp,enemyTimer:Infinity,enemySpawn:Infinity,enemyScale:1,spawnCount:0,bossType:null,bossName:'',bossSpawned:false,bossDefeated:true,bossWarning:0,bossRageWarning:0,units:[],enemies:[],particles:[],projectiles:[],cooldowns:Object.fromEntries(types.map(type=>[type,0])),skillCooldowns:{thief:0},training:Object.fromEntries(types.map(type=>[type,0])),autoSummon:Object.fromEntries(types.map(type=>[type,false])),pendingSpawns:0,shake:0,result:null};}
+function battleUnitTypes(){return [...new Set(progress.loadout)].filter(type=>UNIT_TYPES[type]).slice(0,4);}
+function createPvpGame(room){const hp=5200,types=battleUnitTypes();types.forEach(type=>void spriteImages[type]);if(types.includes('thief'))void skillSpriteImages.thief;return {running:true,mode:'pvp',roomId:room.id,time:0,money:700,maxMoney:2200,income:72,workerLevel:1,playerHp:hp,playerMaxHp:hp,enemyHp:hp,enemyMaxHp:hp,enemyTimer:Infinity,enemySpawn:Infinity,enemyScale:1,spawnCount:0,bossType:null,bossName:'',bossSpawned:false,bossDefeated:true,bossWarning:0,bossRageWarning:0,units:[],enemies:[],particles:[],projectiles:[],cooldowns:Object.fromEntries(types.map(type=>[type,0])),skillCooldowns:{thief:0},training:Object.fromEntries(types.map(type=>[type,0])),autoSummon:Object.fromEntries(types.map(type=>[type,false])),pendingSpawns:0,shake:0,result:null};}
 function resetBattleSpeed(){battleSpeed=1;battleSpeedButton.textContent='1배속';battleSpeedButton.setAttribute('aria-pressed','false');battleSpeedButton.style.backgroundColor='';battleSpeedButton.style.color='';}
 function isPvpPlayerOne(){return pvpRoom?.player_one===activeUser;}
 function setPvpLabels(room){document.querySelector('.enemy-status span').textContent=`${room.player_one}${room.player_one===activeUser?' (나)':' (상대)'}`;document.querySelector('.player-status span').textContent=`${room.player_two}${room.player_two===activeUser?' (나)':' (상대)'}`;}
@@ -497,7 +498,7 @@ function loadProgress(serverProgress=null){
   try{const saved=serverProgress||JSON.parse(localStorage.getItem(progressKey()));if(!saved)return fallback;const owned=[...new Set([...BASIC_UNITS,...(saved.owned||[])])],loadout=(saved.loadout||BASIC_UNITS).filter(type=>owned.includes(type)).slice(0,4);while(loadout.length<4){const next=BASIC_UNITS.find(type=>!loadout.includes(type));loadout.push(next);}return {...fallback,...saved,owned,loadout,levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
 }
 let saveTimer;
-function saveProgress(){if(!isDeveloperAccount()){localStorage.setItem(progressKey(),JSON.stringify(progress));if(!authToken.startsWith('local:')){clearTimeout(saveTimer);saveTimer=setTimeout(()=>apiRequest('/api/progress',{method:'PUT',body:JSON.stringify({progress})}).catch(error=>console.error('Server save failed:',error.message)),150);}}renderMeta();}
+function saveProgress(){if(isDeveloperAccount())localStorage.setItem(DEVELOPER_LOADOUT_KEY,JSON.stringify(progress.loadout));else{localStorage.setItem(progressKey(),JSON.stringify(progress));if(!authToken.startsWith('local:')){clearTimeout(saveTimer);saveTimer=setTimeout(()=>apiRequest('/api/progress',{method:'PUT',body:JSON.stringify({progress})}).catch(error=>console.error('Server save failed:',error.message)),150);}}renderMeta();}
 function renderMeta(){
   loadGameImage(STAGE_BACKGROUNDS[selectedStage]);
   progress.loadout.forEach(type=>loadGameImage(`assets/characters/${CHARACTER_SPRITES[type]}`));
@@ -511,7 +512,7 @@ function renderMeta(){
   renderDeck();renderCollection();
 }
 function renderDeck(){
-  const types=battleUnitTypes(),deck=$('#unit-deck');deck.classList.toggle('pvp-owned-units',Boolean(game?.running&&game.mode==='pvp'));deck.innerHTML=types.map(type=>{const u=UNIT_TYPES[type],auto=Boolean(game?.running&&game.autoSummon?.[type]);return `<button class="unit-card ${auto?'auto-summon':''}" data-unit="${type}" type="button" title="클릭: 소환 · 우클릭: 자동 소환 켜기/끄기" aria-pressed="${auto}"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i>${unitPortrait(type)}<strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
+  const types=battleUnitTypes(),deck=$('#unit-deck');deck.classList.remove('pvp-owned-units');deck.innerHTML=types.map(type=>{const u=UNIT_TYPES[type],auto=Boolean(game?.running&&game.autoSummon?.[type]);return `<button class="unit-card ${auto?'auto-summon':''}" data-unit="${type}" type="button" title="클릭: 소환 · 우클릭: 자동 소환 켜기/끄기" aria-pressed="${auto}"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i>${unitPortrait(type)}<strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
   unitButtons=[...document.querySelectorAll('.unit-card')];unitButtons.forEach(b=>{b.addEventListener('click',()=>summon(b.dataset.unit));b.addEventListener('contextmenu',toggleAutoSummon);});
 }
 function toggleAutoSummon(event){event.preventDefault();if(!game?.running)return;const button=event.currentTarget,type=button.dataset.unit;game.autoSummon[type]=!game.autoSummon[type];button.classList.toggle('auto-summon',game.autoSummon[type]);button.setAttribute('aria-pressed',String(game.autoSummon[type]));playTone(game.autoSummon[type]?660:220,.08,'triangle',.06);}
