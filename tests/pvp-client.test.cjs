@@ -21,6 +21,8 @@ function load(context,name){const start=source.indexOf(`function ${name}(`);asse
   assert.equal(c.game.enemyHp,0);assert.equal(c.game.enemies[0].kind,'pvp');assert.equal(c.game.enemies[0].speed,58);
   c.applyPvpSnapshot({version:3,state:{time:4.2,playerHp:4000,playerMaxHp:5200,enemyHp:0,enemyMaxHp:5200,units:[],enemies:[{id:1,unitType:'runner',x:460,y:300,hp:50}],projectiles:[],particles:[]}});assert.equal(c.game.enemies[0].x,400);c.updatePvpFollower(.05);assert(c.game.enemies[0].x>400&&c.game.enemies[0].x<460);
   c.applyPvpSnapshot({version:1,state:{enemyHp:5200}});assert.equal(c.game.enemyHp,0);
+  c.UNIT_TYPES.thief={skillDamage:1800};c.skillSpriteImages={thief:{}};c.burst=()=>{};c.playJingle=()=>{};c.battleWidth=()=>1200;c.canDamageEnemyBase=()=>true;load(c,'startThiefSkill');load(c,'updateThiefSkill');
+  const thief={unitType:'thief',x:250,skillDamage:1800,attack:0};c.game={enemyHp:5200,playerHp:5200,shake:0};c.startThiefSkill(thief,1);c.updateThiefSkill(thief,1,.63);assert.equal(thief.x,250);c.updateThiefSkill(thief,1,.01);assert.equal(thief.x,1082);c.updateThiefSkill(thief,1,.34);assert.equal(c.game.enemyHp,3400);c.updateThiefSkill(thief,1,.46);assert.equal(thief.skillActive,false);
   assert.match(source,/PVP_HTTP_SNAPSHOT_MS=180/);assert.match(source,/setInterval\(pollPvpRoom,PVP_FALLBACK_POLL_MS\)/);assert.match(source,/particles:\[\]/);assert.match(source,/Math\.ceil\(elapsed\/\.04\)/);
   console.log('PVP client regression checks passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});

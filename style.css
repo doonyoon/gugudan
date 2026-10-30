@@ -85,7 +85,7 @@ select { padding:9px 12px; border:2px solid #6c7397; border-radius:10px; backgro
 .money-box span { font-size:.72rem; color:#aeb5d2; }
 .money-box strong { font-size:1.08rem; text-align:right; }
 .money-track i { background:linear-gradient(90deg,var(--orange),var(--yellow)); }
-.training-panel { display:grid; grid-template-columns:145px 1fr; gap:10px; align-items:center; padding:8px 10px; border:2px solid #4c5276; border-radius:14px; background:#191d34; }
+.training-panel { display:grid; grid-template-columns:145px minmax(0,1fr) auto; gap:10px; align-items:center; padding:8px 10px; border:2px solid #4c5276; border-radius:14px; background:#191d34; }
 .training-title strong,.training-title small { display:block; }
 .training-title small { color:#9fa7c8; font-size:.65rem; }
 .upgrade-deck { display:flex; gap:6px; overflow-x:auto; padding:2px; }
@@ -93,6 +93,8 @@ select { padding:9px 12px; border:2px solid #6c7397; border-radius:10px; backgro
 .upgrade-button strong,.upgrade-button span { display:block; }
 .upgrade-button span { color:var(--yellow); font-size:.67rem; }
 .upgrade-button:disabled { opacity:.4; cursor:not-allowed; }
+.thief-skill-button { position:relative; min-width:145px; overflow:hidden; padding:8px 12px; border:2px solid #5fe7ff; border-radius:11px; background:linear-gradient(135deg,#163969,#241542); color:#fff; cursor:pointer; box-shadow:0 0 16px rgba(75,194,255,.25); }
+.thief-skill-button strong,.thief-skill-button small { position:relative; z-index:2; display:block; }.thief-skill-button small{color:#bdefff;font-size:.62rem}.thief-skill-button:disabled{filter:grayscale(.65);opacity:.55;cursor:not-allowed}.thief-skill-button i{position:absolute;z-index:1;left:0;right:0;bottom:0;height:0;background:rgba(5,8,25,.72);pointer-events:none}
 .unit-deck { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(118px,1fr); gap:9px; overflow-x:auto; padding-bottom:5px; scrollbar-color:#596081 #171a30; }
 .unit-card { position:relative; min-height:105px; overflow:hidden; padding:8px 7px; border:2px solid #4d5478; border-radius:15px; background:linear-gradient(145deg,#2b304d,#181b30); color:#fff; cursor:pointer; box-shadow:0 5px 0 #070912; }
 .unit-card:active:not(:disabled) { transform:translateY(3px); box-shadow:0 2px 0 #070912; }
@@ -101,7 +103,7 @@ select { padding:9px 12px; border:2px solid #6c7397; border-radius:10px; backgro
 .unit-card strong,.unit-card small,.unit-card em { display:block; position:relative; z-index:2; }
 .unit-card sup { padding:1px 3px; border-radius:4px; background:#59617f; font-size:.55rem; }
 .rarity-badge { display:block; position:absolute; z-index:3; top:5px; left:5px; padding:2px 4px; border-radius:4px; background:#555d7a; color:#fff; font-size:.53rem; font-style:normal; }
-.rarity-badge.legend { background:#a36e00;color:#fff1a8 }.rarity-badge.ultra { background:#256f91;color:#d6f5ff }.rarity-badge.super { background:#70459a;color:#f0ddff }.rarity-badge.rare { background:#9a4c62;color:#ffe0e8 }.rarity-badge.ex { background:#397164;color:#d9fff5 }
+.rarity-badge.super-legend { background:linear-gradient(90deg,#1665df,#7d38d2);color:#fff;box-shadow:0 0 7px #52e8ff }.rarity-badge.legend { background:#a36e00;color:#fff1a8 }.rarity-badge.ultra { background:#256f91;color:#d6f5ff }.rarity-badge.super { background:#70459a;color:#f0ddff }.rarity-badge.rare { background:#9a4c62;color:#ffe0e8 }.rarity-badge.ex { background:#397164;color:#d9fff5 }
 .unit-card small { color:#aeb5d2; font-size:.67rem; }
 .unit-card em { margin-top:3px; color:var(--yellow); font-size:.78rem; font-style:normal; font-weight:700; }
 .unit-portrait { display:block; width:38px; height:38px; margin:0 auto 2px; border:2px solid #101323; border-radius:50%; background:#fff0bd; color:#17192a; font-size:1.5rem; font-weight:900; line-height:34px; }
@@ -138,6 +140,8 @@ dialog li { margin:10px 0; line-height:1.6; }
 .gacha-stage.revealing .capsule { animation:capsule-pop .75s ease forwards; }
 .gacha-stage.legend { --prize-color:#ffdd59; }
 .gacha-stage.ultra { --prize-color:#ff9be4; }
+.gacha-stage.super-legend { --prize-color:#58e8ff; }
+.rate-table .super-legend-rate{border-color:#4fdcff;background:linear-gradient(90deg,rgba(27,96,210,.22),rgba(119,45,188,.22));color:#dffbff}.rate-table .super-legend-rate b{color:#65edff}
 .gacha-stage.super { --prize-color:#c987ff; }
 .gacha-claw { position:absolute; top:0; left:calc(50% - 9px); width:18px; height:81px; background:repeating-linear-gradient(0deg,#d4d0df 0 8px,#524559 8px 12px); border:3px solid #231d2c; transform-origin:top; z-index:3; }
 .gacha-claw::after { content:""; position:absolute; bottom:-12px; left:-12px; width:36px; height:24px; border:6px solid #d8d4e0; border-top:8px solid #62596e; border-bottom:0; border-radius:7px 7px 0 0; }

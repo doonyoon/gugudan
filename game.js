@@ -25,8 +25,9 @@ const CHARACTER_SPRITES = {
   chef:'chef.png', mage:'mage.png', medic:'medic.png', sleepy:'sleepy.png', pirate:'pirate.png',
   ninja:'ninja.png', dragon:'dragon.png', gunner:'gunner.png', titan:'titan.png', rocket:'rocket.png',
   phantom:'phantom.png', paladin:'paladin.png', phoenix:'phoenix.png', cosmic:'cosmic.png',
-  emperor:'emperor.png', chronos:'chronos.png'
+  emperor:'emperor.png', chronos:'chronos.png', thief:'thief.png'
 };
+const CHARACTER_SKILL_SPRITES = {thief:'thief-skill.png'};
 const imageCache=new Map(),imageQueue=[];
 let activeImageLoads=0;
 function loadGameImage(source,priority='high'){
@@ -39,7 +40,7 @@ function loadGameImage(source,priority='high'){
     const done=()=>{activeImageLoads--;pumpImageQueue();if(!game?.running)draw();};
     image.onload=done;
     image.onerror=()=>{image.onload=done;image.onerror=done;image.src=source.replace(/\.webp$/,'.png');};
-    image.src=`${source}?v=20261027`;
+    image.src=`${source}?v=20261030`;
   };
   if(priority==='high')imageQueue.unshift(job);else imageQueue.push(job);
   pumpImageQueue();return image;
@@ -47,6 +48,7 @@ function loadGameImage(source,priority='high'){
 function pumpImageQueue(){while(activeImageLoads<4&&imageQueue.length)imageQueue.shift()();}
 function lazyGameImages(entries){const images={};for(const [key,source]of entries)Object.defineProperty(images,key,{enumerable:true,get:()=>loadGameImage(source)});return images;}
 const spriteImages=lazyGameImages(Object.entries(CHARACTER_SPRITES).map(([type,file])=>[type,`assets/characters/${file}`]));
+const skillSpriteImages=lazyGameImages(Object.entries(CHARACTER_SKILL_SPRITES).map(([type,file])=>[type,`assets/characters/${file}`]));
 const ENEMY_SPRITES = {pup:'pup.png',boar:'boar.png',bird:'bird.png',snake:'snake.png',gorilla:'gorilla.png',rhino:'rhino.png',ghost:'ghost.png',mech:'mech.png',demon:'demon.png',wolf:'wolf.png',crab:'crab.png',bat:'bat.png',golem:'golem.png',sorcerer:'sorcerer.png',hyena:'hyena.png',guardian:'guardian.png',cannon:'cannon.png',reaper:'reaper.png',leviathan:'leviathan.png',overlord:'overlord.png',godOverlord:'god-overlord.png'};
 const enemyImages=lazyGameImages(Object.entries(ENEMY_SPRITES).map(([type,file])=>[type,`assets/enemies/${file}`]));
 
@@ -73,6 +75,7 @@ const UNIT_TYPES = {
   ,paladin: { cost: 760, hp: 1250, damage: 145, speed: 20, range: 68, cooldown: 13, rate: 1.45, color: '#e8e2bd', label: '성기사냥', icon: '♜', desc: '철벽의 수호자', rarity: '슈퍼 레어' }
   ,phoenix: { cost: 1100, hp: 780, damage: 310, speed: 45, range: 195, cooldown: 17, rate: 1.65, color: '#ffad77', label: '불사조냥', icon: '♨', desc: '불꽃 초장거리 공격', rarity: '울트라 슈퍼 레어', ranged: true }
   ,chronos: { cost: 1550, hp: 1550, damage: 520, speed: 26, range: 280, cooldown: 24, rate: 2, color: '#9ee8e3', label: '시간신냥', icon: '⌛', desc: '시간을 초월한 포격', rarity: '레전드 레어', ranged: true }
+  ,thief: { cost: 1200, hp: 720, damage: 260, skillDamage: 1800, skillCooldown: 25, speed: 56, range: 68, cooldown: 17, rate: .9, color: '#79a9ff', label: '괴도냥', icon: '♦', desc: '성 앞 순간이동 강탈 스킬', rarity: '슈퍼 레전드 레어' }
 };
 const ENEMY_TYPES = {
   pup: { hp: 95, damage: 13, speed: 34, range: 34, rate: .8, reward: 28, color: '#d9a66f', label:'들개' },
@@ -153,12 +156,12 @@ const STAGE_BACKGROUNDS=Array.from({length:20},(_,index)=>`assets/backgrounds/st
 const stageBackgroundImages=lazyGameImages(STAGE_BACKGROUNDS.map((source,index)=>[index,source]));
 const baseImages=lazyGameImages([['player','assets/backgrounds/player-castle.png'],['enemy','assets/backgrounds/enemy-castle.png']]);
 const BASIC_UNITS = ['runner','tank','fighter','mage'];
-const RARITY_RANK = {'기본':0,'노멀':1,'EX':2,'레어':3,'슈퍼 레어':4,'울트라 슈퍼 레어':5,'레전드 레어':6};
+const RARITY_RANK = {'기본':0,'노멀':1,'EX':2,'레어':3,'슈퍼 레어':4,'울트라 슈퍼 레어':5,'레전드 레어':6,'슈퍼 레전드 레어':7};
 const GACHA_POOLS = {
-  '노멀':['boxer','farmer','sleepy'], 'EX':['chef','pirate','medic'], '레어':['ninja','gunner','samurai','rocket'], '슈퍼 레어':['dragon','titan','phantom','paladin'], '울트라 슈퍼 레어':['cosmic','phoenix'], '레전드 레어':['emperor','chronos']
+  '노멀':['boxer','farmer','sleepy'], 'EX':['chef','pirate','medic'], '레어':['ninja','gunner','samurai','rocket'], '슈퍼 레어':['dragon','titan','phantom','paladin'], '울트라 슈퍼 레어':['cosmic','phoenix'], '레전드 레어':['emperor','chronos'], '슈퍼 레전드 레어':['thief']
 };
 const GACHA_RATES = [
-  {rarity:'노멀',rate:50},{rarity:'EX',rate:25},{rarity:'레어',rate:9},{rarity:'슈퍼 레어',rate:10.7},{rarity:'울트라 슈퍼 레어',rate:5},{rarity:'레전드 레어',rate:.3}
+  {rarity:'노멀',rate:50},{rarity:'EX',rate:25},{rarity:'레어',rate:9},{rarity:'슈퍼 레어',rate:10.6},{rarity:'울트라 슈퍼 레어',rate:5},{rarity:'레전드 레어',rate:.3},{rarity:'슈퍼 레전드 레어',rate:.1}
 ];
 const GOLDEN_GACHA_RATES = GACHA_RATES.map(item=>({...item,rate:item.rate*(RARITY_RANK[item.rarity]>=RARITY_RANK['레어']?5:1)}));
 const GACHA_UNITS = Object.values(GACHA_POOLS).flat();
@@ -191,7 +194,7 @@ function createGame() {
   const settings = STAGES[selectedStage];
   const money=300+selectedStage*50,maxMoney=1300+selectedStage*110,income=55+selectedStage*4,playerHp=3600+selectedStage*250;
   const bossType=BOSS_STAGES[selectedStage]||null;
-  return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, bossType, bossName:bossType?ENEMY_TYPES[bossType].label:'', bossSpawned:false, bossDefeated:!bossType, bossWarning:0, bossRageWarning:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), training:Object.fromEntries(progress.loadout.map(type=>[type,0])), autoSummon:Object.fromEntries(progress.loadout.map(type=>[type,false])), shake:0, result:null };
+  return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, bossType, bossName:bossType?ENEMY_TYPES[bossType].label:'', bossSpawned:false, bossDefeated:!bossType, bossWarning:0, bossRageWarning:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), skillCooldowns:{thief:0}, training:Object.fromEntries(progress.loadout.map(type=>[type,0])), autoSummon:Object.fromEntries(progress.loadout.map(type=>[type,false])), shake:0, result:null };
 }
 
 function resizeCanvas() {
@@ -207,6 +210,7 @@ window.addEventListener('orientationchange',()=>setTimeout(()=>{resizeCanvas();d
 
 $('#start-button').addEventListener('click', startBattle);
 $('#worker-button').addEventListener('click', upgradeWorker);
+$('#thief-skill-button').addEventListener('click', activateThiefSkill);
 $('#help-button').addEventListener('click', () => $('#help-dialog').showModal());
 $('#close-help').addEventListener('click', () => $('#help-dialog').close());
 $('#sound-button').addEventListener('click', toggleSound);
@@ -401,7 +405,7 @@ async function pollPvpRoom(){
 }
 function pvpOwnedUnitTypes(){return [...new Set(progress.owned)].filter(type=>UNIT_TYPES[type]);}
 function battleUnitTypes(){return game?.running&&game.mode==='pvp'?pvpOwnedUnitTypes():progress.loadout;}
-function createPvpGame(room){const hp=5200,types=pvpOwnedUnitTypes();types.forEach(type=>void spriteImages[type]);return {running:true,mode:'pvp',roomId:room.id,time:0,money:700,maxMoney:2200,income:72,workerLevel:1,playerHp:hp,playerMaxHp:hp,enemyHp:hp,enemyMaxHp:hp,enemyTimer:Infinity,enemySpawn:Infinity,enemyScale:1,spawnCount:0,bossType:null,bossName:'',bossSpawned:false,bossDefeated:true,bossWarning:0,bossRageWarning:0,units:[],enemies:[],particles:[],projectiles:[],cooldowns:Object.fromEntries(types.map(type=>[type,0])),training:Object.fromEntries(types.map(type=>[type,0])),autoSummon:Object.fromEntries(types.map(type=>[type,false])),pendingSpawns:0,shake:0,result:null};}
+function createPvpGame(room){const hp=5200,types=pvpOwnedUnitTypes();types.forEach(type=>void spriteImages[type]);if(types.includes('thief'))void skillSpriteImages.thief;return {running:true,mode:'pvp',roomId:room.id,time:0,money:700,maxMoney:2200,income:72,workerLevel:1,playerHp:hp,playerMaxHp:hp,enemyHp:hp,enemyMaxHp:hp,enemyTimer:Infinity,enemySpawn:Infinity,enemyScale:1,spawnCount:0,bossType:null,bossName:'',bossSpawned:false,bossDefeated:true,bossWarning:0,bossRageWarning:0,units:[],enemies:[],particles:[],projectiles:[],cooldowns:Object.fromEntries(types.map(type=>[type,0])),skillCooldowns:{thief:0},training:Object.fromEntries(types.map(type=>[type,0])),autoSummon:Object.fromEntries(types.map(type=>[type,false])),pendingSpawns:0,shake:0,result:null};}
 function resetBattleSpeed(){battleSpeed=1;battleSpeedButton.textContent='1배속';battleSpeedButton.setAttribute('aria-pressed','false');battleSpeedButton.style.backgroundColor='';battleSpeedButton.style.color='';}
 function isPvpPlayerOne(){return pvpRoom?.player_one===activeUser;}
 function setPvpLabels(room){document.querySelector('.enemy-status span').textContent=`${room.player_one}${room.player_one===activeUser?' (나)':' (상대)'}`;document.querySelector('.player-status span').textContent=`${room.player_two}${room.player_two===activeUser?' (나)':' (상대)'}`;}
@@ -423,16 +427,16 @@ function connectPvpSocket(){
   socket.onerror=()=>{if(pvpSocket===socket)socket.close();};
   socket.onclose=()=>{if(pvpSocket!==socket)return;clearTimeout(pvpSocketReadyTimer);pvpSocketReadyTimer=null;pvpSocket=null;pvpSocketReady=false;if(game?.running&&game.mode==='pvp'){const delay=Math.min(5000,500*2**Math.min(pvpReconnectAttempts++,3));setTimeout(()=>{if(!pvpSocket&&game?.running&&game.mode==='pvp')connectPvpSocket();},delay);}};
 }
-function pvpUnitSnapshot(unit){return {id:String(unit.id),unitType:unit.unitType,side:unit.side,x:Number(unit.x),y:Number(unit.y),hp:Number(unit.hp),maxHp:Number(unit.maxHp),attack:Number(unit.attack||0),flash:Number(unit.flash||0),hit:Number(unit.hit||0),actionTime:Number(unit.actionTime||0),damage:Number(unit.damage||0),heal:Number(unit.heal||0),rageTriggered:Boolean(unit.rageTriggered)};}
+function pvpUnitSnapshot(unit){return {id:String(unit.id),unitType:unit.unitType,side:unit.side,x:Number(unit.x),y:Number(unit.y),hp:Number(unit.hp),maxHp:Number(unit.maxHp),attack:Number(unit.attack||0),flash:Number(unit.flash||0),hit:Number(unit.hit||0),actionTime:Number(unit.actionTime||0),damage:Number(unit.damage||0),heal:Number(unit.heal||0),skillDamage:Number(unit.skillDamage||0),skillActive:Boolean(unit.skillActive),skillElapsed:Number(unit.skillElapsed||0),skillTeleported:Boolean(unit.skillTeleported),skillHitDone:Boolean(unit.skillHitDone),rageTriggered:Boolean(unit.rageTriggered)};}
 function buildPvpSnapshot(){return {time:game.time,playerHp:game.playerHp,playerMaxHp:game.playerMaxHp,enemyHp:game.enemyHp,enemyMaxHp:game.enemyMaxHp,units:game.units.map(pvpUnitSnapshot),enemies:game.enemies.map(pvpUnitSnapshot),projectiles:game.projectiles.map(item=>({id:String(item.id||''),x:Number(item.x),y:Number(item.y),speed:Number(item.speed),direction:Number(item.direction),targetId:String(item.targetId||''),targetSide:item.targetSide,damage:Number(item.damage),life:Number(item.life),color:item.color})),particles:[]};}
 function publishPvpSnapshot(now){if(!isPvpPlayerOne()||game.pvpFinishing)return;const socketReady=pvpSocketReady&&pvpSocket?.readyState===WebSocket.OPEN;if(now-pvpLastSnapshotAt<(socketReady?PVP_SNAPSHOT_MS:PVP_HTTP_SNAPSHOT_MS)||(!socketReady&&game.snapshotPending))return;pvpLastSnapshotAt=now;const payload={type:'snapshot',version:++pvpSnapshotVersion,state:buildPvpSnapshot()};if(socketReady)pvpSocket.send(JSON.stringify(payload));else{const battle=game;battle.snapshotPending=true;apiRequest(`/api/pvp/rooms/${battle.roomId}/snapshot`,{method:'POST',body:JSON.stringify(payload)}).catch(error=>console.warn('PVP snapshot retry:',error.message)).finally(()=>{battle.snapshotPending=false;});}}
 function hydratePvpUnit(row,side){const base=UNIT_TYPES[row.unitType]||{};return {...base,...row,id:String(row.id),side,kind:side==='enemy'?'pvp':undefined};}
 function reconcilePvpUnits(current,rows,side){const existing=new Map((current||[]).map(unit=>[String(unit.id),unit]));return (rows||[]).map(row=>{const hydrated=hydratePvpUnit(row,side),unit=existing.get(hydrated.id);if(!unit)return {...hydrated,syncX:Number(hydrated.x),syncY:Number(hydrated.y)};const x=Number(unit.x),y=Number(unit.y),targetX=Number(hydrated.x),targetY=Number(hydrated.y);Object.assign(unit,hydrated);unit.x=Math.abs(targetX-x)>180?targetX:x;unit.y=Math.abs(targetY-y)>100?targetY:y;unit.syncX=targetX;unit.syncY=targetY;return unit;});}
 function reconcilePvpProjectiles(current,rows){const existing=new Map((current||[]).map(item=>[String(item.id),item]));return (rows||[]).map(row=>{const hydrated={...row,id:String(row.id||''),targetId:String(row.targetId||'')},projectile=existing.get(hydrated.id);if(!projectile)return {...hydrated,syncX:Number(hydrated.x),syncY:Number(hydrated.y)};const x=Number(projectile.x),y=Number(projectile.y);Object.assign(projectile,hydrated);projectile.x=x;projectile.y=y;projectile.syncX=Number(hydrated.x);projectile.syncY=Number(hydrated.y);return projectile;});}
 function applyPvpSnapshot(snapshot){const version=Number(snapshot.version)||0,state=snapshot.state;if(!game?.running||game.mode!=='pvp'||!state||version<=pvpAppliedVersion)return;pvpAppliedVersion=version;game.time=Number(state.time)||0;game.playerHp=Number(state.playerHp);game.playerMaxHp=Number(state.playerMaxHp)||5200;game.enemyHp=Number(state.enemyHp);game.enemyMaxHp=Number(state.enemyMaxHp)||5200;game.units=reconcilePvpUnits(game.units,state.units,'cat');game.enemies=reconcilePvpUnits(game.enemies,state.enemies,'enemy');game.projectiles=reconcilePvpProjectiles(game.projectiles,state.projectiles);game.shake=0;}
-function queuePvpSpawn(event){if(!event||event.room_id!==pvpRoom?.id||!isPvpPlayerOne()||pvpScheduledEvents.has(String(event.id)))return;const battle=game;pvpScheduledEvents.add(String(event.id));const delay=Math.max(0,Date.parse(event.execute_at||event.created_at)-(Date.now()+pvpServerOffset));setTimeout(()=>{if(game===battle&&game?.running&&game.mode==='pvp'&&isPvpPlayerOne())spawnPvpUnit(event,event.player_id===activeUser);},delay);}
+function queuePvpSpawn(event){if(!event||event.room_id!==pvpRoom?.id||!isPvpPlayerOne()||pvpScheduledEvents.has(String(event.id)))return;const battle=game;pvpScheduledEvents.add(String(event.id));const delay=Math.max(0,Date.parse(event.execute_at||event.created_at)-(Date.now()+pvpServerOffset));setTimeout(()=>{if(game!==battle||!game?.running||game.mode!=='pvp'||!isPvpPlayerOne())return;if(event.unit_type==='thief_skill'){const army=event.player_id===pvpRoom.player_one?game.units:game.enemies,unit=army.find(item=>String(item.id)===String(event.unit_data?.unitId)&&item.unitType==='thief'&&item.hp>0);if(unit)startThiefSkill(unit,event.player_id===pvpRoom.player_one?1:-1);return;}spawnPvpUnit(event,event.player_id===activeUser);},delay);}
 function spawnPvpUnit(event,mine){const u=UNIT_TYPES[event.unit_type];if(!u||!game)return;const stats=event.unit_data||{},playerOne=event.player_id===pvpRoom?.player_one,unit={...u,...stats,id:`pvp-${event.id}`,side:playerOne?'cat':'enemy',kind:playerOne?undefined:'pvp',unitType:event.unit_type,x:playerOne?90:PVP_WORLD_WIDTH-90,y:groundY(),attack:.25,hp:Math.max(1,Number(stats.hp||u.hp)),maxHp:Math.max(1,Number(stats.maxHp||stats.hp||u.hp)),damage:Math.max(0,Number(stats.damage??u.damage)),heal:Math.max(0,Number(stats.heal??(u.heal||0))),rageTriggered:false};if(mine)game.pendingSpawns=Math.max(0,(game.pendingSpawns||0)-1);if(playerOne)game.units.push(unit);else game.enemies.push(unit);}
-function sendPvpUnit(unitType,unit){if(!pvpRoom)return;const battle=game,roomId=pvpRoom.id,unitData={hp:unit.hp,maxHp:unit.maxHp,damage:unit.damage,heal:unit.heal||0};apiRequest(`/api/pvp/rooms/${roomId}/spawn`,{method:'POST',body:JSON.stringify({unitType,unitData})}).then(data=>{if(game!==battle||pvpRoom?.id!==roomId)return;syncPvpServerClock(data.serverNow);if(isPvpPlayerOne())queuePvpSpawn(data.event);else if(game?.mode==='pvp')game.pendingSpawns=Math.max(0,(game.pendingSpawns||0)-1);}).catch(error=>{if(game===battle&&game?.mode==='pvp'&&game.running){game.pendingSpawns=Math.max(0,(game.pendingSpawns||0)-1);game.money=Math.min(game.maxMoney,game.money+UNIT_TYPES[unitType].cost);game.cooldowns[unitType]=0;}console.warn('PVP spawn failed:',error.message);});}
+function sendPvpUnit(unitType,unit){if(!pvpRoom)return;const battle=game,roomId=pvpRoom.id,unitData={hp:unit.hp,maxHp:unit.maxHp,damage:unit.damage,heal:unit.heal||0,skillDamage:unit.skillDamage||0};apiRequest(`/api/pvp/rooms/${roomId}/spawn`,{method:'POST',body:JSON.stringify({unitType,unitData})}).then(data=>{if(game!==battle||pvpRoom?.id!==roomId)return;syncPvpServerClock(data.serverNow);if(isPvpPlayerOne())queuePvpSpawn(data.event);else if(game?.mode==='pvp')game.pendingSpawns=Math.max(0,(game.pendingSpawns||0)-1);}).catch(error=>{if(game===battle&&game?.mode==='pvp'&&game.running){game.pendingSpawns=Math.max(0,(game.pendingSpawns||0)-1);game.money=Math.min(game.maxMoney,game.money+UNIT_TYPES[unitType].cost);game.cooldowns[unitType]=0;}console.warn('PVP spawn failed:',error.message);});}
 function completePvpBattle(win){if(!game)return;clearPvpPolling();closePvpSync();game.running=false;game.result=win;game.autoSummon={};draw();updateUI();renderDeck();$('#exit-battle').classList.add('hidden');$('#training-panel').classList.add('hidden');const box=$('#battle-message');box.innerHTML=`<span>${win?'승리!':'패배...'}</span><small>${win?'상대 성을 먼저 파괴했습니다.':'상대가 우리 성을 먼저 파괴했습니다.'}</small><button class="main-button" id="retry-button">대전 선택</button>`;box.classList.remove('hidden');$('#retry-button').onclick=()=>{battleSpeedButton.classList.remove('hidden');resetBattleSpeed();resetBattleLabels();$('#battle-message').classList.add('hidden');$('#start-overlay').classList.remove('hidden');setBgmTrack(LOBBY_BGM_ID);renderMeta();};playJingle(win?[523,659,784,1047]:[330,247,196],.18);}
 async function openFriends(){
   $('#friend-message').textContent='';$('#friend-message').className='';$('#friend-request-list').innerHTML='<p>불러오는 중...</p>';$('#friend-list').innerHTML='<p>불러오는 중...</p>';$('#friends-dialog').showModal();await loadFriends();
@@ -495,6 +499,7 @@ function saveProgress(){if(!isDeveloperAccount()){localStorage.setItem(progressK
 function renderMeta(){
   loadGameImage(STAGE_BACKGROUNDS[selectedStage]);
   progress.loadout.forEach(type=>loadGameImage(`assets/characters/${CHARACTER_SPRITES[type]}`));
+  if(progress.loadout.includes('thief'))void skillSpriteImages.thief;
   (ENEMY_STAGE_POOLS[selectedStage]||[]).forEach(type=>loadGameImage(`assets/enemies/${ENEMY_SPRITES[type]}`,'low'));
   if(BOSS_STAGES[selectedStage])loadGameImage(`assets/enemies/${ENEMY_SPRITES[BOSS_STAGES[selectedStage]]}`,'low');
   $('#gold').textContent=isDeveloperAccount()?'∞':progress.gold.toLocaleString();
@@ -513,9 +518,9 @@ function unitPortrait(type){
   const file=CHARACTER_SPRITES[type],sheet=SPRITE_FRAMES[type];
   if(!file||!sheet)return `<span class="unit-portrait ${type}">${unitIcon(type)}</span>`;
   const [x,y,w,h]=sheet.frames[0],pad=Math.max(w,h)*.045;
-  return `<span class="unit-portrait sprite"><svg viewBox="${x-pad} ${y-pad} ${w+pad*2} ${h+pad*2}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}" overflow="hidden"><image href="assets/characters/${file.replace(/\.png$/,'.webp')}?v=20261027" width="${sheet.width}" height="${sheet.height}"/></svg></svg></span>`;
+  return `<span class="unit-portrait sprite"><svg viewBox="${x-pad} ${y-pad} ${w+pad*2} ${h+pad*2}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}" overflow="hidden"><image href="assets/characters/${file.replace(/\.png$/,'.webp')}?v=20261030" width="${sheet.width}" height="${sheet.height}"/></svg></svg></span>`;
 }
-function rarityClass(rarity){return rarity==='레전드 레어'?'legend':rarity==='울트라 슈퍼 레어'?'ultra':rarity==='슈퍼 레어'?'super':rarity==='레어'?'rare':rarity==='EX'?'ex':'normal';}
+function rarityClass(rarity){return rarity==='슈퍼 레전드 레어'?'super-legend':rarity==='레전드 레어'?'legend':rarity==='울트라 슈퍼 레어'?'ultra':rarity==='슈퍼 레어'?'super':rarity==='레어'?'rare':rarity==='EX'?'ex':'normal';}
 function renderCollection(){if(!$('#collection'))return;$('#collection').innerHTML=GACHA_UNITS.map(type=>{const u=UNIT_TYPES[type],owned=progress.owned.includes(type);return `<span class="${owned?'owned':''}"><b>${u.rarity}</b>${owned?u.label:'???'}<br>${owned?`Lv.${progress.levels[type]}`:'미획득'}</span>`;}).join('');}
 function openLineup(){selectedLineupSlot=0;renderLineup();$('#lineup-dialog').showModal();}
 function renderLineup(){
@@ -556,10 +561,10 @@ function performGacha(count,golden=false){
   },GACHA_RESULT_DELAY));
 }
 function createConfetti(rarity){
-  const colors=rarity==='레전드 레어'?['#ffd447','#fff','#ff8c42']:rarity==='울트라 슈퍼 레어'?['#67dbff','#a98cff','#fff']:['#ffd447','#ef476f','#55d6be','#8b7cff'];
-  const count=rarity==='레전드 레어'?45:28;$('#confetti').innerHTML=Array.from({length:count},(_,i)=>{const angle=Math.PI*2*i/count,distance=65+Math.random()*70;return `<i style="--x:${Math.cos(angle)*distance}px;--y:${Math.sin(angle)*distance}px;--rotate:${Math.random()*180}deg;--color:${colors[i%colors.length]}"></i>`;}).join('');
+  const colors=rarity==='슈퍼 레전드 레어'?['#56e7ff','#326cff','#ffd447','#fff']:rarity==='레전드 레어'?['#ffd447','#fff','#ff8c42']:rarity==='울트라 슈퍼 레어'?['#67dbff','#a98cff','#fff']:['#ffd447','#ef476f','#55d6be','#8b7cff'];
+  const count=rarity==='슈퍼 레전드 레어'?60:rarity==='레전드 레어'?45:28;$('#confetti').innerHTML=Array.from({length:count},(_,i)=>{const angle=Math.PI*2*i/count,distance=65+Math.random()*70;return `<i style="--x:${Math.cos(angle)*distance}px;--y:${Math.sin(angle)*distance}px;--rotate:${Math.random()*180}deg;--color:${colors[i%colors.length]}"></i>`;}).join('');
 }
-function playRevealSound(rarity){const notes=rarity==='레전드 레어'?[523,659,784,1047,1319]:rarity==='울트라 슈퍼 레어'?[440,554,659,880]:rarity==='슈퍼 레어'?[392,494,659]:[330,440,523];playJingle(notes,.09);}
+function playRevealSound(rarity){const notes=rarity==='슈퍼 레전드 레어'?[392,523,659,784,1047,1568]:rarity==='레전드 레어'?[523,659,784,1047,1319]:rarity==='울트라 슈퍼 레어'?[440,554,659,880]:rarity==='슈퍼 레어'?[392,494,659]:[330,440,523];playJingle(notes,.09);}
 async function redeemCoupon(event){
   event.preventDefault();const input=$('#coupon-code'),message=$('#coupon-message'),code=input.value.trim().toUpperCase();message.className='';
   if(!code){message.textContent='코드를 입력해 주세요.';message.classList.add('error');return;}
@@ -582,10 +587,11 @@ function loop(now) {
   if(game?.running&&game.mode==='pvp')publishPvpSnapshot(now);
   draw(); updateUI(); if(game?.running) animationId=requestAnimationFrame(loop);
 }
-function updatePvpFollower(dt){game.time+=dt;game.money=Math.min(game.maxMoney,game.money+game.income*dt);Object.keys(game.cooldowns).forEach(key=>game.cooldowns[key]=Math.max(0,game.cooldowns[key]-dt));Object.keys(game.autoSummon).filter(type=>game.autoSummon[type]).forEach(type=>summon(type));const blend=Math.min(1,dt*12);[...game.units,...game.enemies].forEach(unit=>{if(Number.isFinite(unit.syncX))unit.x+=(unit.syncX-unit.x)*blend;if(Number.isFinite(unit.syncY))unit.y+=(unit.syncY-unit.y)*blend;unit.flash=Math.max(0,(unit.flash||0)-dt);unit.hit=Math.max(0,(unit.hit||0)-dt);unit.actionTime=Math.max(0,(unit.actionTime||0)-dt);});game.projectiles.forEach(item=>{if(Number.isFinite(item.syncX))item.x+=(item.syncX-item.x)*blend;if(Number.isFinite(item.syncY))item.y+=(item.syncY-item.y)*blend;});game.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=80*dt;p.life-=dt;});game.particles=game.particles.filter(p=>p.life>0);game.shake=Math.max(0,game.shake-dt*12);}
+function updatePvpFollower(dt){game.time+=dt;game.money=Math.min(game.maxMoney,game.money+game.income*dt);Object.keys(game.cooldowns).forEach(key=>game.cooldowns[key]=Math.max(0,game.cooldowns[key]-dt));Object.keys(game.skillCooldowns||{}).forEach(key=>game.skillCooldowns[key]=Math.max(0,game.skillCooldowns[key]-dt));Object.keys(game.autoSummon).filter(type=>game.autoSummon[type]).forEach(type=>summon(type));const blend=Math.min(1,dt*12);[...game.units,...game.enemies].forEach(unit=>{if(Number.isFinite(unit.syncX))unit.x+=(unit.syncX-unit.x)*blend;if(Number.isFinite(unit.syncY))unit.y+=(unit.syncY-unit.y)*blend;unit.flash=Math.max(0,(unit.flash||0)-dt);unit.hit=Math.max(0,(unit.hit||0)-dt);unit.actionTime=Math.max(0,(unit.actionTime||0)-dt);if(unit.skillActive)unit.skillElapsed=(unit.skillElapsed||0)+dt;});game.projectiles.forEach(item=>{if(Number.isFinite(item.syncX))item.x+=(item.syncX-item.x)*blend;if(Number.isFinite(item.syncY))item.y+=(item.syncY-item.y)*blend;});game.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=80*dt;p.life-=dt;});game.particles=game.particles.filter(p=>p.life>0);game.shake=Math.max(0,game.shake-dt*12);}
 function update(dt) {
   game.time+=dt;game.bossWarning=Math.max(0,game.bossWarning-dt);game.bossRageWarning=Math.max(0,game.bossRageWarning-dt); game.money=Math.min(game.maxMoney,game.money+game.income*dt); game.enemyTimer-=dt;
   Object.keys(game.cooldowns).forEach(k=>game.cooldowns[k]=Math.max(0,game.cooldowns[k]-dt));
+  Object.keys(game.skillCooldowns||{}).forEach(k=>game.skillCooldowns[k]=Math.max(0,game.skillCooldowns[k]-dt));
   Object.keys(game.autoSummon).filter(type=>game.autoSummon[type]).forEach(type=>summon(type));
   if(game.mode!=='pvp'&&selectedStage===STAGES.length-1&&game.bossType&&!game.bossSpawned&&game.time>=FINAL_BOSS_SPAWN_SECONDS)spawnEnemy(game.bossType);
   if(game.mode!=='pvp'&&game.enemyTimer<=0){ spawnEnemy(); game.enemyTimer=game.enemySpawn*(.88+Math.random()*.34)*Math.max(.78,1-game.time/600); }
@@ -598,7 +604,9 @@ function update(dt) {
 function updateArmy(army,opponents,direction,dt) {
   const width=battleWidth();
   army.forEach(unit=>{
-    unit.attack-=dt; unit.hit=Math.max(0,(unit.hit||0)-dt);unit.actionTime=Math.max(0,(unit.actionTime||0)-dt); const target=findTarget(unit,opponents,direction);
+    unit.attack-=dt; unit.hit=Math.max(0,(unit.hit||0)-dt);unit.actionTime=Math.max(0,(unit.actionTime||0)-dt);
+    if(unit.skillActive){updateThiefSkill(unit,direction,dt);return;}
+    const target=findTarget(unit,opponents,direction);
     if(unit.healer){updateHealer(unit,army,direction,dt);return;}
     const raging=unit.boss&&unit.hp<=unit.maxHp*.5;
     if(raging&&!unit.rageTriggered){unit.rageTriggered=true;game.bossRageWarning=2.8;game.shake=12;playJingle([110,98,82,73],.18);}
@@ -628,7 +636,7 @@ function updateHealer(unit,army,direction,dt){
   const followX=front?front.x-direction*75:unit.x+direction*20;if(Math.abs(followX-unit.x)>10)unit.x+=Math.sign(followX-unit.x)*unit.speed*.55*dt;
 }
 function healingBurst(x,y,amount){for(let i=0;i<8;i++)game.particles.push({x:x+(Math.random()-.5)*28,y:y-30-Math.random()*25,vx:(Math.random()-.5)*20,vy:-18-Math.random()*25,life:.55+Math.random()*.25,color:'#65f0b5'});playTone(660,.12,'sine',.045);setTimeout(()=>playTone(880,.16,'sine',.04),70);}
-function findTarget(unit,opponents,direction){ return opponents.filter(e=>direction===1?e.x>=unit.x:e.x<=unit.x).sort((a,b)=>Math.abs(a.x-unit.x)-Math.abs(b.x-unit.x)).find(e=>Math.abs(e.x-unit.x)<=unit.range); }
+function findTarget(unit,opponents,direction){ return opponents.filter(e=>!e.skillActive&&(direction===1?e.x>=unit.x:e.x<=unit.x)).sort((a,b)=>Math.abs(a.x-unit.x)-Math.abs(b.x-unit.x)).find(e=>Math.abs(e.x-unit.x)<=unit.range); }
 function shoot(unit,target,damageAmount=unit.damage){ game.projectiles.push({x:unit.x,y:unit.y-35,speed:230,direction:target.x>=unit.x?1:-1,targetId:target.id,targetSide:target.side,damage:damageAmount,life:4,color:unit.side==='cat'?'#f7dcff':'#ff7b8d'}); playTone(unit.side==='cat'?700:180,.08,'sine',.04); }
 function updateProjectiles(dt){
   const width=battleWidth();
@@ -652,7 +660,24 @@ function removeDead(){
   game.units=game.units.filter(e=>{if(e.hp>0)return true;burst(e.x,e.y,'#dff6ff',8);return false;});
 }
 function pvpLocalArmy(){return isPvpPlayerOne()?game.units:game.enemies;}
-function summon(type){ const deployed=game?.mode==='pvp'?pvpLocalArmy().length:game?.units.length||0;if(!game?.running||deployed+(game.pendingSpawns||0)>=MAX_DEPLOYED_CATS)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,training=game.training[type]||0,boost=(1+(level-1)*.08)*(1+training*.15);if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown;const unit={...u,unitType:type,id:crypto.randomUUID(),side:'cat',x:82,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost),heal:Math.round((u.heal||0)*boost)};if(game.mode==='pvp'){game.pendingSpawns=(game.pendingSpawns||0)+1;sendPvpUnit(type,unit);}else game.units.push(unit);playTone(440,.1,'triangle',.08); }
+function summon(type){ const deployed=game?.mode==='pvp'?pvpLocalArmy().length:game?.units.length||0;if(!game?.running||deployed+(game.pendingSpawns||0)>=MAX_DEPLOYED_CATS)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,training=game.training[type]||0,boost=(1+(level-1)*.08)*(1+training*.15);if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown;const unit={...u,unitType:type,id:crypto.randomUUID(),side:'cat',x:82,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost),heal:Math.round((u.heal||0)*boost),skillDamage:Math.round((u.skillDamage||0)*boost)};if(game.mode==='pvp'){game.pendingSpawns=(game.pendingSpawns||0)+1;sendPvpUnit(type,unit);}else game.units.push(unit);playTone(440,.1,'triangle',.08); }
+
+function activateThiefSkill(){
+  if(!game?.running)return;const army=game.mode==='pvp'?pvpLocalArmy():game.units,direction=game.mode==='pvp'&&!isPvpPlayerOne()?-1:1;
+  const unit=army.filter(item=>item.unitType==='thief'&&item.hp>0&&!item.skillActive).sort((a,b)=>direction===1?b.x-a.x:a.x-b.x)[0],cooldown=game.skillCooldowns?.thief||0;
+  if(!unit||cooldown>0)return;game.skillCooldowns.thief=UNIT_TYPES.thief.skillCooldown;playJingle([659,880,1175],.07);
+  if(game.mode!=='pvp'){startThiefSkill(unit,direction);return;}
+  const battle=game,roomId=pvpRoom?.id;apiRequest(`/api/pvp/rooms/${roomId}/skill`,{method:'POST',body:JSON.stringify({unitId:String(unit.id)})}).then(data=>{if(game!==battle||pvpRoom?.id!==roomId)return;syncPvpServerClock(data.serverNow);if(isPvpPlayerOne())queuePvpSpawn(data.event);}).catch(error=>{if(game===battle)game.skillCooldowns.thief=0;console.warn('PVP thief skill failed:',error.message);});
+}
+function startThiefSkill(unit,direction){
+  if(!unit||unit.skillActive)return;unit.skillActive=true;unit.skillElapsed=0;unit.skillTeleported=false;unit.skillHitDone=false;unit.skillDirection=direction;unit.actionTime=0;void skillSpriteImages.thief;burst(unit.x,unit.y,'#64dfff',14);
+}
+function updateThiefSkill(unit,direction,dt){
+  unit.skillElapsed=(unit.skillElapsed||0)+dt;
+  if(!unit.skillTeleported&&unit.skillElapsed>=.64){unit.skillTeleported=true;unit.x=direction===1?battleWidth()-118:118;burst(unit.x,unit.y,'#ffd447',18);game.shake=5;}
+  if(unit.skillTeleported&&!unit.skillHitDone&&unit.skillElapsed>=.98){unit.skillHitDone=true;const amount=Math.max(1,Math.round(unit.skillDamage||UNIT_TYPES.thief.skillDamage));if(direction===1){if(canDamageEnemyBase())game.enemyHp-=amount;}else game.playerHp-=amount;burst(unit.x,unit.y,'#58dfff',32);game.shake=12;playJingle([196,392,784,1175],.045);}
+  if(unit.skillElapsed>=1.44){unit.skillActive=false;unit.skillElapsed=0;unit.skillTeleported=false;unit.skillHitDone=false;unit.attack=.35;}
+}
 function spawnEnemy(forcedType=null){
   const pool=ENEMY_STAGE_POOLS[selectedStage];game.spawnCount++;
   const normalPool=selectedStage>=4&&pool.length>1?pool.slice(0,-1):pool;
@@ -720,10 +745,12 @@ function drawUnit(u){
   drawUnitGear(u.unitType,size);healthMini(u);ctx.restore();
 }
 function drawSpriteUnit(unit,image){
+  const skillImage=unit.unitType==='thief'&&unit.skillActive?skillSpriteImages.thief:null,usingSkill=Boolean(skillImage?.complete&&skillImage.naturalWidth),activeImage=usingSkill?skillImage:image;
+  if(usingSkill){const elapsed=Math.max(0,unit.skillElapsed||0),frame=elapsed<.64?Math.min(3,Math.floor(elapsed/.16)):4+Math.min(3,Math.floor((elapsed-.64)/.2)),sheet=SPRITE_FRAMES.thiefSkill,bounds=sheet.frames[frame],[sx,sy,sw,sh]=bounds,scale=132/(sheet.width/4),width=sw*scale,height=sh*scale;ctx.drawImage(activeImage,sx,sy,sw,sh,-width/2,-height+12,width,height);return;}
   const isAttacking=(unit.actionTime||0)>0;
   const elapsed = isAttacking ? (0.55 - unit.actionTime) : (game?.time || 0);
   const frame = Math.max(0,Math.floor(elapsed / (isAttacking ? 0.1375 : 0.11)) % 4), row = isAttacking ? 1 : 0;
-  const spriteWidths={titan:125,phoenix:112,paladin:118,dragon:110,cosmic:112,emperor:120,chronos:120};
+  const spriteWidths={titan:125,phoenix:112,paladin:118,dragon:110,cosmic:112,emperor:120,chronos:120,thief:112};
   const sheet=SPRITE_FRAMES[unit.unitType],bounds=sheet.frames[row*4+frame];
   const [sx,sy,sw,sh]=bounds,baseWidth=spriteWidths[unit.unitType]||(unit.unitType==='mage'?112:100);
   // Keep one scale across poses and anchor the visible feet to the unit's ground line.
@@ -799,7 +826,7 @@ function drawProjectile(p){ctx.fillStyle=p.color||'#f7dcff';ctx.shadowColor=p.co
 function burst(x,y,color,count=5){for(let i=0;i<count;i++)game.particles.push({x,y:y-28,vx:(Math.random()-.5)*100,vy:-30-Math.random()*90,life:.35+Math.random()*.35,color});}
 function drawParticle(p){ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,5,5);ctx.globalAlpha=1;}
 
-function updateUI(){if(!game)return;const deployed=(game.mode==='pvp'?pvpLocalArmy().length:game.units.length)+(game.pendingSpawns||0);$('#money').textContent=Math.floor(game.money);$('#max-money').textContent=game.maxMoney;$('#money-bar').style.width=`${game.money/game.maxMoney*100}%`;$('#worker-level').textContent=game.workerLevel;$('#worker-cost').textContent=game.workerLevel>=8?'MAX':`${workerCost()} 🐟`;$('#worker-button').disabled=!game.running||game.workerLevel>=8||game.money<workerCost();$('#battle-time').textContent=`${String(Math.floor(game.time/60)).padStart(2,'0')}:${String(Math.floor(game.time%60)).padStart(2,'0')}`;$('#unit-count').textContent=`고양이 ${deployed} / ${MAX_DEPLOYED_CATS}`;$('#unit-count').classList.toggle('limit',deployed>=MAX_DEPLOYED_CATS);if(game.mode==='pvp'){setHealth('enemy',game.playerHp,game.playerMaxHp);setHealth('player',game.enemyHp,game.enemyMaxHp);}else{setHealth('player',game.playerHp,game.playerMaxHp);setHealth('enemy',game.enemyHp,game.enemyMaxHp);}unitButtons.forEach(b=>{const type=b.dataset.unit,u=UNIT_TYPES[type],cd=game.cooldowns[type]||0;b.disabled=!game.running||deployed>=MAX_DEPLOYED_CATS||game.money<u.cost||cd>0;b.querySelector('.cooldown').style.height=`${cd/u.cooldown*100}%`;});document.querySelectorAll('.upgrade-button').forEach(b=>{const type=b.dataset.upgrade;b.disabled=!game.running||game.training[type]>=5||game.money<trainingCost(type);});}
+function updateUI(){if(!game)return;const localArmy=game.mode==='pvp'?pvpLocalArmy():game.units,deployed=localArmy.length+(game.pendingSpawns||0);$('#money').textContent=Math.floor(game.money);$('#max-money').textContent=game.maxMoney;$('#money-bar').style.width=`${game.money/game.maxMoney*100}%`;$('#worker-level').textContent=game.workerLevel;$('#worker-cost').textContent=game.workerLevel>=8?'MAX':`${workerCost()} 🐟`;$('#worker-button').disabled=!game.running||game.workerLevel>=8||game.money<workerCost();$('#battle-time').textContent=`${String(Math.floor(game.time/60)).padStart(2,'0')}:${String(Math.floor(game.time%60)).padStart(2,'0')}`;$('#unit-count').textContent=`고양이 ${deployed} / ${MAX_DEPLOYED_CATS}`;$('#unit-count').classList.toggle('limit',deployed>=MAX_DEPLOYED_CATS);if(game.mode==='pvp'){setHealth('enemy',game.playerHp,game.playerMaxHp);setHealth('player',game.enemyHp,game.enemyMaxHp);}else{setHealth('player',game.playerHp,game.playerMaxHp);setHealth('enemy',game.enemyHp,game.enemyMaxHp);}unitButtons.forEach(b=>{const type=b.dataset.unit,u=UNIT_TYPES[type],cd=game.cooldowns[type]||0;b.disabled=!game.running||deployed>=MAX_DEPLOYED_CATS||game.money<u.cost||cd>0;b.querySelector('.cooldown').style.height=`${cd/u.cooldown*100}%`;});document.querySelectorAll('.upgrade-button').forEach(b=>{const type=b.dataset.upgrade;b.disabled=!game.running||game.training[type]>=5||game.money<trainingCost(type);});const skillButton=$('#thief-skill-button'),hasThiefInDeck=battleUnitTypes().includes('thief'),available=localArmy.some(unit=>unit.unitType==='thief'&&unit.hp>0&&!unit.skillActive),skillCd=game.skillCooldowns?.thief||0;skillButton.classList.toggle('hidden',!hasThiefInDeck);skillButton.disabled=!game.running||!available||skillCd>0;$('#thief-skill-status').textContent=skillCd>0?`재사용 ${skillCd.toFixed(1)}초`:available?'성 앞으로 순간이동 · 강한 피해':'괴도냥을 먼저 소환하세요';$('#thief-skill-cooldown').style.height=`${Math.min(100,skillCd/UNIT_TYPES.thief.skillCooldown*100)}%`;}
 function setHealth(side,hp,max){$(`#${side}-health-bar`).style.width=`${Math.max(0,hp/max*100)}%`;$(`#${side}-health-text`).textContent=`${Math.max(0,Math.ceil(hp)).toLocaleString()} / ${max.toLocaleString()}`;}
 
 function initAudio(){if(!soundOn)return;if(!audio){const A=window.AudioContext||window.webkitAudioContext;if(A)audio=new A();}if(audio?.state==='suspended')audio.resume();}
