@@ -23,7 +23,7 @@ async function streamClient(token,roomId){const controller=new AbortController()
     await waitForServer();
     assert.equal(await rejectedSocket(),4003);
     const one=await request('/api/signup',{method:'POST',body:{id:'syncp1',password:'test1234'}}),two=await request('/api/signup',{method:'POST',body:{id:'syncp2',password:'test1234'}});
-    await request('/api/progress',{method:'PUT',token:two.token,body:{progress:{gold:0,highestStage:0,cleared:[],owned:['runner','tank','fighter','mage','chronos'],loadout:['chronos','tank','fighter','mage'],levels:{runner:1,tank:1,fighter:1,mage:1,chronos:1},redeemedCodes:[]}}});
+    await request('/api/progress',{method:'PUT',token:two.token,body:{progress:{gold:0,highestStage:0,cleared:[],owned:['runner','tank','fighter','mage','chronos'],loadout:['runner','tank','fighter','mage'],levels:{runner:1,tank:1,fighter:1,mage:1,chronos:1},redeemedCodes:[]}}});
     const waiting=await request('/api/pvp/rooms',{method:'POST',token:one.token});
     assert.match(waiting.room.room_code,/^[A-Z2-9]{6}$/);assert.equal(waiting.room.status,'waiting');
     const quick=await request('/api/pvp/match',{method:'POST',token:two.token});

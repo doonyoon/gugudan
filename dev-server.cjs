@@ -114,7 +114,7 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {unitType,unitData={}}=await readJson(request);
       if(!pvpUnits.has(unitType))return json(response,400,{error:'사용할 수 없는 고양이입니다.'});
       const account=id===developerId?{progress:developerProgress()}:await store.get(id);if(!account)return json(response,401,{error:'계정을 찾을 수 없습니다.'});
-      if(!account.progress?.loadout?.includes(unitType))return json(response,403,{error:'현재 편성 덱에 없는 고양이입니다.'});
+      if(!account.progress?.owned?.includes(unitType))return json(response,403,{error:'보유하지 않은 고양이입니다.'});
       const safeData=['hp','maxHp','damage','heal'].reduce((result,key)=>{const value=Math.round(Number(unitData?.[key]||0));if(value>=0&&value<=100000)result[key]=value;return result;},{});
       const event=await store.sendPvpUnit(pvpMatch[1],id,unitType,safeData);if(event)broadcastPvp(pvpMatch[1],{type:'event',event});return event?json(response,201,{event,serverNow:Date.now()}):json(response,409,{error:'상대의 입장을 기다리거나 끝난 대전입니다.'});
     }
