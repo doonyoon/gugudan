@@ -20,6 +20,7 @@ async function passwordHash(password,salt){return (await scrypt(password,salt,64
 function developerProgress(){return {...emptyProgress(),gold:Number.MAX_SAFE_INTEGER,highestStage:19,cleared:Array.from({length:20},(_,i)=>i),developer:true};}
 const pvpUnits=new Set(['runner','tank','fighter','mage','ninja','dragon','gunner','titan','boxer','chef','cosmic','emperor','farmer','sleepy','pirate','medic','samurai','rocket','phantom','paladin','phoenix','chronos']);
 function cachePvpRoom(room){if(!room?.id)return room;if(room.status==='active')pvpRoomCache.set(room.id,room);else pvpRoomCache.delete(room.id);return room;}
+function retireCachedPvpRooms(userId,keepId){for(const [roomId,room] of pvpRoomCache){if(roomId!==keepId&&[room.player_one,room.player_two].includes(userId)){broadcastPvp(roomId,{type:'room',room:{...room,status:'cancelled'}});pvpRoomCache.delete(roomId);}}}
 async function activePvpRoom(roomId,userId){const cached=pvpRoomCache.get(roomId);if(cached?.status==='active'&&[cached.player_one,cached.player_two].includes(userId))return cached;return cachePvpRoom(await store.getPvpRoom(roomId,userId));}
 function broadcastPvp(roomId,payload){const message=JSON.stringify({...payload,serverNow:Date.now()});for(const socket of pvpSockets.get(roomId)||[]){if(socket.readyState===WebSocket.OPEN)socket.send(message);}for(const response of pvpStreams.get(roomId)||[]){if(response.destroyed)continue;if(response.writableLength>262144){response.destroy();continue;}response.write(`data: ${message}\n\n`);}}
 function validPvpSnapshot(state){if(!state||typeof state!=='object'||JSON.stringify(state).length>120000)return false;return ['time','playerHp','playerMaxHp','enemyHp','enemyMaxHp'].every(key=>typeof state[key]==='number'&&Number.isFinite(state[key]))&&state.playerMaxHp>0&&state.enemyMaxHp>0&&Array.isArray(state.units)&&state.units.length<=60&&Array.isArray(state.enemies)&&state.enemies.length<=60&&Array.isArray(state.projectiles)&&state.projectiles.length<=160&&Array.isArray(state.particles)&&state.particles.length<=200;}
@@ -74,15 +75,15 @@ async function api(request,response,pathname){
     if(request.method==='POST'&&pathname==='/api/logout')return json(response,200,{ok:true});
     if(request.method==='POST'&&pathname==='/api/pvp/match'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
-      const room=cachePvpRoom(await store.joinPvp(id));if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
+      const room=await store.joinPvp(id);retireCachedPvpRooms(id,room.id);cachePvpRoom(room);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
     }
     if(request.method==='POST'&&pathname==='/api/pvp/rooms'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
-      const room=cachePvpRoom(await store.createPvpRoom(id));if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,201,{room});
+      const room=await store.createPvpRoom(id);retireCachedPvpRooms(id,room.id);cachePvpRoom(room);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,201,{room});
     }
     if(request.method==='POST'&&pathname==='/api/pvp/rooms/join'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {code}=await readJson(request),roomCode=normalizePvpRoomCode(code);if(!roomCode)return json(response,400,{error:'방 코드는 영문과 숫자 6자리로 입력해 주세요.'});
-      const room=cachePvpRoom(await store.joinPvpRoom(id,roomCode));if(!room)return json(response,404,{error:'입장할 수 있는 방을 찾지 못했습니다.'});if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
+      const room=await store.joinPvpRoom(id,roomCode);if(!room)return json(response,404,{error:'입장할 수 있는 방을 찾지 못했습니다.'});retireCachedPvpRooms(id,room.id);cachePvpRoom(room);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
     }
     const pvpCancel=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})\/cancel$/i);
     if(pvpCancel&&request.method==='POST'){
@@ -113,6 +114,7 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {unitType,unitData={}}=await readJson(request);
       if(!pvpUnits.has(unitType))return json(response,400,{error:'사용할 수 없는 고양이입니다.'});
       const account=id===developerId?{progress:developerProgress()}:await store.get(id);if(!account)return json(response,401,{error:'계정을 찾을 수 없습니다.'});
+      if(!account.progress?.loadout?.includes(unitType))return json(response,403,{error:'현재 편성 덱에 없는 고양이입니다.'});
       const safeData=['hp','maxHp','damage','heal'].reduce((result,key)=>{const value=Math.round(Number(unitData?.[key]||0));if(value>=0&&value<=100000)result[key]=value;return result;},{});
       const event=await store.sendPvpUnit(pvpMatch[1],id,unitType,safeData);if(event)broadcastPvp(pvpMatch[1],{type:'event',event});return event?json(response,201,{event,serverNow:Date.now()}):json(response,409,{error:'상대의 입장을 기다리거나 끝난 대전입니다.'});
     }

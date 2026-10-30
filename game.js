@@ -371,7 +371,7 @@ function setPvpWaitingControls(waiting=false){
   if(!waiting){$('#pvp-room-code-box').classList.add('hidden');$('#pvp-room-code').textContent='------';}
 }
 function showPvpWaiting(room){
-  const code=room?.room_code||'';setPvpWaitingControls(true);$('#pvp-room-code-box').classList.toggle('hidden',!code);$('#pvp-room-code').textContent=code||'------';$('#pvp-status').textContent=code?`방 코드 ${code} · 친구가 코드를 입력하면 자동으로 시작됩니다.`:'빠른 매칭 중입니다. 상대가 참가하면 자동으로 시작됩니다.';clearPvpPolling();pvpPollTimer=setInterval(pollPvpRoom,250);
+  const code=room?.room_code||'';setPvpWaitingControls(true);$('#pvp-room-code-box').classList.toggle('hidden',!code);$('#pvp-room-code').textContent=code||'------';$('#pvp-status').textContent=code?`방 코드 ${code} · 친구가 코드를 입력하면 자동으로 시작됩니다.`:'실제로 접속 중인 회원을 기다리는 중입니다. AI 상대는 사용하지 않습니다.';clearPvpPolling();pvpPollTimer=setInterval(pollPvpRoom,250);
 }
 function resetPvpWaiting(message='빠른 매칭 또는 방 코드로 대전을 시작하세요.'){setPvpWaitingControls(false);$('#pvp-status').textContent=message;}
 function openPvp(){if(game?.running){window.alert('진행 중인 전투를 끝낸 뒤 대전을 시작해 주세요.');return;}if(pvpRoom?.status==='waiting')showPvpWaiting(pvpRoom);else resetPvpWaiting();$('#pvp-dialog').showModal();}
@@ -399,9 +399,8 @@ async function pollPvpRoom(){
     if(pvpRoom.status==='cancelled'){clearPvpPolling();pvpRoom=null;pvpEventCursor=0;resetPvpWaiting('매칭이 취소되었습니다.');}
   }catch(error){$('#pvp-status').textContent=`연결 재시도 중: ${error.message}`;}finally{pvpPollBusy=false;}
 }
-function pvpAvailableUnitTypes(){return Object.keys(UNIT_TYPES);}
-function battleUnitTypes(){return game?.running&&game.mode==='pvp'?pvpAvailableUnitTypes():progress.loadout;}
-function createPvpGame(room){const hp=5200,types=pvpAvailableUnitTypes();return {running:true,mode:'pvp',roomId:room.id,time:0,money:700,maxMoney:2200,income:72,workerLevel:1,playerHp:hp,playerMaxHp:hp,enemyHp:hp,enemyMaxHp:hp,enemyTimer:Infinity,enemySpawn:Infinity,enemyScale:1,spawnCount:0,bossType:null,bossName:'',bossSpawned:false,bossDefeated:true,bossWarning:0,bossRageWarning:0,units:[],enemies:[],particles:[],projectiles:[],cooldowns:Object.fromEntries(types.map(type=>[type,0])),training:Object.fromEntries(types.map(type=>[type,0])),autoSummon:Object.fromEntries(types.map(type=>[type,false])),pendingSpawns:0,shake:0,result:null};}
+function battleUnitTypes(){return progress.loadout;}
+function createPvpGame(room){const hp=5200,types=progress.loadout;return {running:true,mode:'pvp',roomId:room.id,time:0,money:700,maxMoney:2200,income:72,workerLevel:1,playerHp:hp,playerMaxHp:hp,enemyHp:hp,enemyMaxHp:hp,enemyTimer:Infinity,enemySpawn:Infinity,enemyScale:1,spawnCount:0,bossType:null,bossName:'',bossSpawned:false,bossDefeated:true,bossWarning:0,bossRageWarning:0,units:[],enemies:[],particles:[],projectiles:[],cooldowns:Object.fromEntries(types.map(type=>[type,0])),training:Object.fromEntries(types.map(type=>[type,0])),autoSummon:Object.fromEntries(types.map(type=>[type,false])),pendingSpawns:0,shake:0,result:null};}
 function resetBattleSpeed(){battleSpeed=1;battleSpeedButton.textContent='1배속';battleSpeedButton.setAttribute('aria-pressed','false');battleSpeedButton.style.backgroundColor='';battleSpeedButton.style.color='';}
 function isPvpPlayerOne(){return pvpRoom?.player_one===activeUser;}
 function setPvpLabels(room){document.querySelector('.enemy-status span').textContent=`${room.player_one}${room.player_one===activeUser?' (나)':' (상대)'}`;document.querySelector('.player-status span').textContent=`${room.player_two}${room.player_two===activeUser?' (나)':' (상대)'}`;}
@@ -504,7 +503,7 @@ function renderMeta(){
   renderDeck();renderCollection();
 }
 function renderDeck(){
-  const types=battleUnitTypes(),deck=$('#unit-deck');deck.classList.toggle('pvp-all-units',Boolean(game?.running&&game.mode==='pvp'));deck.innerHTML=types.map(type=>{const u=UNIT_TYPES[type],auto=Boolean(game?.running&&game.autoSummon?.[type]);return `<button class="unit-card ${auto?'auto-summon':''}" data-unit="${type}" type="button" title="클릭: 소환 · 우클릭: 자동 소환 켜기/끄기" aria-pressed="${auto}"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i>${unitPortrait(type)}<strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
+  const types=progress.loadout,deck=$('#unit-deck');deck.classList.remove('pvp-all-units');deck.innerHTML=types.map(type=>{const u=UNIT_TYPES[type],auto=Boolean(game?.running&&game.autoSummon?.[type]);return `<button class="unit-card ${auto?'auto-summon':''}" data-unit="${type}" type="button" title="클릭: 소환 · 우클릭: 자동 소환 켜기/끄기" aria-pressed="${auto}"><i class="rarity-badge ${rarityClass(u.rarity)}">${u.rarity}</i>${unitPortrait(type)}<strong>${u.label} <sup>Lv.${progress.levels[type]||1}</sup></strong><small>${u.desc||({runner:'빠른 돌격',tank:'높은 체력',fighter:'강한 공격',mage:'원거리 공격'}[type])}</small><em>${u.cost} 🐟</em><i class="cooldown"></i></button>`;}).join('');
   unitButtons=[...document.querySelectorAll('.unit-card')];unitButtons.forEach(b=>{b.addEventListener('click',()=>summon(b.dataset.unit));b.addEventListener('contextmenu',toggleAutoSummon);});
 }
 function toggleAutoSummon(event){event.preventDefault();if(!game?.running)return;const button=event.currentTarget,type=button.dataset.unit;game.autoSummon[type]=!game.autoSummon[type];button.classList.toggle('auto-summon',game.autoSummon[type]);button.setAttribute('aria-pressed',String(game.autoSummon[type]));playTone(game.autoSummon[type]?660:220,.08,'triangle',.06);}
@@ -667,7 +666,7 @@ function upgradeWorker(){ if(!game?.running||game.workerLevel>=8)return;const co
 function workerCost(){return 120+(game?.workerLevel||1)*70;}
 function trainingCost(type){const level=game?.training[type]||0;return Math.round((60+UNIT_TYPES[type].cost*.35)*Math.pow(1.45,level)/10)*10;}
 function renderTraining(){
-  if(!game)return;$('#upgrade-deck').innerHTML=battleUnitTypes().map(type=>`<button class="upgrade-button" data-upgrade="${type}" type="button"><strong>${UNIT_TYPES[type].label} +${game.training[type]}</strong><span>${game.training[type]>=5?'MAX':`${trainingCost(type)} 🐟`}</span></button>`).join('');
+  if(!game)return;$('#upgrade-deck').innerHTML=progress.loadout.map(type=>`<button class="upgrade-button" data-upgrade="${type}" type="button"><strong>${UNIT_TYPES[type].label} +${game.training[type]}</strong><span>${game.training[type]>=5?'MAX':`${trainingCost(type)} 🐟`}</span></button>`).join('');
   document.querySelectorAll('.upgrade-button').forEach(button=>button.onclick=()=>upgradeUnit(button.dataset.upgrade));
 }
 function upgradeUnit(type){
