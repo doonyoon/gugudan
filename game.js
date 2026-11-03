@@ -168,11 +168,21 @@ const GOLDEN_GACHA_RATES = [
   {rarity:'노멀',rate:25.15},{rarity:'EX',rate:12.5},{rarity:'레어',rate:22.5},{rarity:'슈퍼 레어',rate:26.5},{rarity:'울트라 슈퍼 레어',rate:12.5},{rarity:'레전드 레어',rate:.75},{rarity:'슈퍼 레전드 레어',rate:.1}
 ];
 const GACHA_UNITS = Object.values(GACHA_POOLS).flat();
+const SHOP_ITEMS = [
+  {id:'starting-fish',name:'출격 보급 상자',price:500,icon:'🐟',description:'일반 스테이지 시작 물고기 +250',theme:'green'},
+  {id:'golden-rod',name:'황금 낚싯대',price:900,icon:'🎣',description:'일반 스테이지 물고기 생산 속도 +12%',theme:'cyan'},
+  {id:'giant-net',name:'초대형 어망',price:1200,icon:'🧺',description:'일반 스테이지 최대 보유 물고기 +400',theme:'orange'},
+  {id:'castle-armor',name:'성채 강화석',price:1800,icon:'🏰',description:'일반 스테이지 우리 성채 체력 +12%',theme:'red'},
+  {id:'battle-manual',name:'전투 교본',price:2400,icon:'⚔️',description:'일반 스테이지 모든 고양이 공격력 +10%',theme:'purple'},
+  {id:'swift-hourglass',name:'신속의 모래시계',price:3000,icon:'⏳',description:'일반 스테이지 소환 대기시간 10% 감소',theme:'gold'}
+];
+const SHOP_ITEM_MAP=Object.fromEntries(SHOP_ITEMS.map(item=>[item.id,item]));
 const SAVE_KEY = 'cat-fortress-save-v2';
 const AUTH_ACCOUNTS_KEY = 'cat-fortress-accounts-v1';
 const AUTH_SESSION_KEY = 'cat-fortress-session-v1';
 const AUTH_REPAIR_KEY = 'cat-fortress-account-repair-v2';
 const DEVELOPER_LOADOUT_KEY = 'cat-fortress-developer-loadout-v1';
+const DEVELOPER_SHOP_KEY = 'cat-fortress-developer-shop-v1';
 const DEVELOPER_ID = 'doonyoon';
 const DEVELOPER_PASSWORD = 'kk45537606';
 const API_BASE = location.hostname.endsWith('github.io') ? 'https://goyangi-seongchaejeon.onrender.com' : '';
@@ -196,9 +206,9 @@ let unitButtons = [];
 
 function createGame() {
   const settings = STAGES[selectedStage];
-  const money=300+selectedStage*50,maxMoney=1300+selectedStage*110,income=55+selectedStage*4,playerHp=3600+selectedStage*250;
+  const bonuses=shopBonuses(),money=300+selectedStage*50+bonuses.startingMoney,maxMoney=1300+selectedStage*110+bonuses.maxMoney,income=Math.round((55+selectedStage*4)*bonuses.incomeMultiplier),playerHp=Math.round((3600+selectedStage*250)*bonuses.castleHpMultiplier);
   const bossType=BOSS_STAGES[selectedStage]||null;
-  return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, spawnCount:0, bossType, bossName:bossType?ENEMY_TYPES[bossType].label:'', bossSpawned:false, bossDefeated:!bossType, bossWarning:0, bossRageWarning:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), skillCooldowns:{thief:0}, training:Object.fromEntries(progress.loadout.map(type=>[type,0])), autoSummon:Object.fromEntries(progress.loadout.map(type=>[type,false])), shake:0, result:null };
+  return { running:true, time:0, money, maxMoney, income, workerLevel:1, playerHp, playerMaxHp:playerHp, enemyHp:settings.enemyHp, enemyMaxHp:settings.enemyHp, enemyTimer:2.8, enemySpawn:settings.spawn, enemyScale:settings.scale, unitDamageMultiplier:bonuses.damageMultiplier, summonCooldownMultiplier:bonuses.cooldownMultiplier, spawnCount:0, bossType, bossName:bossType?ENEMY_TYPES[bossType].label:'', bossSpawned:false, bossDefeated:!bossType, bossWarning:0, bossRageWarning:0, units:[], enemies:[], particles:[], projectiles:[], cooldowns:Object.fromEntries(progress.loadout.map(type=>[type,0])), skillCooldowns:{thief:0}, training:Object.fromEntries(progress.loadout.map(type=>[type,0])), autoSummon:Object.fromEntries(progress.loadout.map(type=>[type,false])), shake:0, result:null };
 }
 
 function resizeCanvas() {
@@ -221,6 +231,8 @@ $('#sound-button').addEventListener('click', toggleSound);
 $('#auth-sound-button').addEventListener('click', toggleSound);
 $('#gacha-sound-toggle').addEventListener('click',toggleSound);
 $('#gacha-button').addEventListener('click', openGacha);
+$('#shop-button').addEventListener('click', openShop);
+$('#close-shop').addEventListener('click', () => $('#shop-dialog').close());
 $('#ranking-button').addEventListener('click', openRanking);
 $('#close-ranking').addEventListener('click', () => $('#ranking-dialog').close());
 $('#pvp-button').addEventListener('click', openPvp);
@@ -285,7 +297,7 @@ function repairDuplicatedAccountSaves(){
 }
 function progressKey(){return activeUser?`${SAVE_KEY}:${activeUser}`:SAVE_KEY;}
 function isDeveloperAccount(){return activeUser===DEVELOPER_ID;}
-function developerProgress(){const owned=Object.keys(UNIT_TYPES);let loadout=[...BASIC_UNITS];try{const saved=JSON.parse(localStorage.getItem(DEVELOPER_LOADOUT_KEY)||'[]'),valid=[...new Set(saved)].filter(type=>owned.includes(type)).slice(0,4);if(valid.length===4)loadout=valid;}catch{}return {gold:Number.MAX_SAFE_INTEGER,highestStage:STAGES.length-1,cleared:STAGES.map((_,index)=>index),owned,loadout,levels:Object.fromEntries(owned.map(type=>[type,99])),redeemedCodes:['9027']};}
+function developerProgress(){const owned=Object.keys(UNIT_TYPES);let loadout=[...BASIC_UNITS],shopPurchases=[];try{const saved=JSON.parse(localStorage.getItem(DEVELOPER_LOADOUT_KEY)||'[]'),valid=[...new Set(saved)].filter(type=>owned.includes(type)).slice(0,4);if(valid.length===4)loadout=valid;}catch{}try{shopPurchases=[...new Set(JSON.parse(localStorage.getItem(DEVELOPER_SHOP_KEY)||'[]'))].filter(id=>SHOP_ITEM_MAP[id]);}catch{}return {gold:Number.MAX_SAFE_INTEGER,highestStage:STAGES.length-1,cleared:STAGES.map((_,index)=>index),owned,loadout,levels:Object.fromEntries(owned.map(type=>[type,99])),redeemedCodes:['9027'],shopPurchases};}
 async function hashPassword(password){const data=new TextEncoder().encode(password);const hash=await crypto.subtle.digest('SHA-256',data);return [...new Uint8Array(hash)].map(value=>value.toString(16).padStart(2,'0')).join('');}
 function authValues(){return {id:$('#auth-id').value.trim(),password:$('#auth-password').value,message:$('#auth-message')};}
 function validAccount(id,password,message){message.className='';if(!/^[A-Za-z0-9가-힣_]{3,16}$/.test(id)){message.textContent='아이디는 3~16자의 한글, 영문, 숫자, 밑줄만 사용할 수 있어요.';return false;}if(password.length<4){message.textContent='비밀번호는 4자 이상 입력하세요.';return false;}return true;}
@@ -495,11 +507,11 @@ async function openAdmin(){
 
 function loadProgress(serverProgress=null){
   if(isDeveloperAccount())return developerProgress();
-  const fallback={gold:0,highestStage:0,cleared:[],owned:[...BASIC_UNITS],loadout:[...BASIC_UNITS],levels:{runner:1,tank:1,fighter:1,mage:1},redeemedCodes:[]};
-  try{const saved=serverProgress||JSON.parse(localStorage.getItem(progressKey()));if(!saved)return fallback;const owned=[...new Set([...BASIC_UNITS,...(saved.owned||[])])],loadout=(saved.loadout||BASIC_UNITS).filter(type=>owned.includes(type)).slice(0,4);while(loadout.length<4){const next=BASIC_UNITS.find(type=>!loadout.includes(type));loadout.push(next);}return {...fallback,...saved,owned,loadout,levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
+  const fallback={gold:0,highestStage:0,cleared:[],owned:[...BASIC_UNITS],loadout:[...BASIC_UNITS],levels:{runner:1,tank:1,fighter:1,mage:1},redeemedCodes:[],shopPurchases:[]};
+  try{const saved=serverProgress||JSON.parse(localStorage.getItem(progressKey()));if(!saved)return fallback;const owned=[...new Set([...BASIC_UNITS,...(saved.owned||[])])],loadout=(saved.loadout||BASIC_UNITS).filter(type=>owned.includes(type)).slice(0,4),shopPurchases=[...new Set(saved.shopPurchases||[])].filter(id=>SHOP_ITEM_MAP[id]);while(loadout.length<4){const next=BASIC_UNITS.find(type=>!loadout.includes(type));loadout.push(next);}return {...fallback,...saved,owned,loadout,shopPurchases,levels:{...fallback.levels,...(saved.levels||{})}};}catch{return fallback;}
 }
 let saveTimer;
-function saveProgress(){if(isDeveloperAccount())localStorage.setItem(DEVELOPER_LOADOUT_KEY,JSON.stringify(progress.loadout));else{localStorage.setItem(progressKey(),JSON.stringify(progress));if(!authToken.startsWith('local:')){clearTimeout(saveTimer);saveTimer=setTimeout(()=>apiRequest('/api/progress',{method:'PUT',body:JSON.stringify({progress})}).catch(error=>console.error('Server save failed:',error.message)),150);}}renderMeta();}
+function saveProgress(){if(isDeveloperAccount()){localStorage.setItem(DEVELOPER_LOADOUT_KEY,JSON.stringify(progress.loadout));localStorage.setItem(DEVELOPER_SHOP_KEY,JSON.stringify(progress.shopPurchases||[]));}else{localStorage.setItem(progressKey(),JSON.stringify(progress));if(!authToken.startsWith('local:')){clearTimeout(saveTimer);saveTimer=setTimeout(()=>apiRequest('/api/progress',{method:'PUT',body:JSON.stringify({progress})}).catch(error=>console.error('Server save failed:',error.message)),150);}}renderMeta();}
 function renderMeta(){
   loadGameImage(STAGE_BACKGROUNDS[selectedStage]);
   progress.loadout.forEach(type=>loadGameImage(`assets/characters/${CHARACTER_SPRITES[type]}`));
@@ -534,6 +546,10 @@ function renderLineup(){
   document.querySelectorAll('.roster-card').forEach(button=>button.onclick=()=>equipUnit(button.dataset.roster));
 }
 function equipUnit(type){const other=progress.loadout.indexOf(type),current=progress.loadout[selectedLineupSlot];if(other>=0){progress.loadout[other]=current;}progress.loadout[selectedLineupSlot]=type;saveProgress();renderLineup();}
+function shopBonuses(){const owned=new Set(progress.shopPurchases||[]);return {startingMoney:owned.has('starting-fish')?250:0,incomeMultiplier:owned.has('golden-rod')?1.12:1,maxMoney:owned.has('giant-net')?400:0,castleHpMultiplier:owned.has('castle-armor')?1.12:1,damageMultiplier:owned.has('battle-manual')?1.1:1,cooldownMultiplier:owned.has('swift-hourglass')?.9:1};}
+function openShop(){const message=$('#shop-message');message.className='shop-message';message.textContent='상품은 계정당 한 번씩 구매할 수 있습니다.';renderShop();$('#shop-dialog').showModal();}
+function renderShop(){if(!$('#shop-grid'))return;const owned=new Set(progress.shopPurchases||[]),developer=isDeveloperAccount();$('#shop-coin-balance').textContent=developer?'∞':Number(progress.gold||0).toLocaleString();$('#shop-grid').innerHTML=SHOP_ITEMS.map(item=>{const purchased=owned.has(item.id),affordable=developer||progress.gold>=item.price;return `<article class="shop-card ${item.theme} ${purchased?'purchased':''}"><span class="shop-product-icon" aria-hidden="true">${item.icon}</span><h3>${item.name}</h3><p>${item.description}</p><button type="button" data-shop-item="${item.id}" ${purchased||!affordable?'disabled':''}>${purchased?'보유 중':`🪙 ${item.price.toLocaleString()}`}</button></article>`;}).join('');$('#shop-grid').querySelectorAll('[data-shop-item]').forEach(button=>button.addEventListener('click',buyShopItem));}
+function buyShopItem(event){const item=SHOP_ITEM_MAP[event.currentTarget.dataset.shopItem],owned=new Set(progress.shopPurchases||[]),message=$('#shop-message');if(!item||owned.has(item.id))return;if(!isDeveloperAccount()&&progress.gold<item.price){message.className='shop-message error';message.textContent='코인이 부족합니다.';return;}if(!isDeveloperAccount())progress.gold-=item.price;progress.shopPurchases=[...owned,item.id];saveProgress();renderShop();message.className='shop-message success';message.textContent=`${item.name} 구매 완료! 다음 일반 스테이지 전투부터 적용됩니다.`;playJingle([523,659,784,1047],.08);}
 function setGachaButtons(disabled=false){disabled=disabled||gachaBusy;$('#draw-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<300);$('#draw-ten-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<3000);$('#golden-draw-button').disabled=disabled||(!isDeveloperAccount()&&progress.gold<1000);}
 function openGacha(){resetGachaAnimation();renderCollection();$('#gacha-result').className='gacha-result';$('#gacha-result').textContent='전설의 고양이에게 도전해 보세요!';$('#gacha-stage').className='gacha-stage';$('#confetti').innerHTML='';$('#coupon-message').textContent='특별 코드를 입력해 보세요.';$('#coupon-message').className='';setGachaButtons();$('#gacha-dialog').showModal();}
 function rollGacha(randomValue=Math.random(),rates=GACHA_RATES){
@@ -664,7 +680,7 @@ function removeDead(){
   game.units=game.units.filter(e=>{if(e.hp>0)return true;burst(e.x,e.y,'#dff6ff',8);return false;});
 }
 function pvpLocalArmy(){return isPvpPlayerOne()?game.units:game.enemies;}
-function summon(type){ const deployed=game?.mode==='pvp'?pvpLocalArmy().length:game?.units.length||0;if(!game?.running||deployed+(game.pendingSpawns||0)>=MAX_DEPLOYED_CATS)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,training=game.training[type]||0,boost=(1+(level-1)*.08)*(1+training*.15);if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown;const unit={...u,unitType:type,id:crypto.randomUUID(),side:'cat',x:82,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost),heal:Math.round((u.heal||0)*boost),skillDamage:Math.round((u.skillDamage||0)*boost),skillCooldown:0};if(game.mode==='pvp'){game.pendingSpawns=(game.pendingSpawns||0)+1;sendPvpUnit(type,unit);}else game.units.push(unit);playTone(440,.1,'triangle',.08); }
+function summon(type){ const deployed=game?.mode==='pvp'?pvpLocalArmy().length:game?.units.length||0;if(!game?.running||deployed+(game.pendingSpawns||0)>=MAX_DEPLOYED_CATS)return;const u=UNIT_TYPES[type],level=progress.levels[type]||1,training=game.training[type]||0,boost=(1+(level-1)*.08)*(1+training*.15),damageMultiplier=game.mode==='pvp'?1:(game.unitDamageMultiplier||1),cooldownMultiplier=game.mode==='pvp'?1:(game.summonCooldownMultiplier||1);if(game.money<u.cost||game.cooldowns[type]>0)return;game.money-=u.cost;game.cooldowns[type]=u.cooldown*cooldownMultiplier;const unit={...u,unitType:type,id:crypto.randomUUID(),side:'cat',x:82,y:groundY(),attack:.25,hp:Math.round(u.hp*boost),maxHp:Math.round(u.hp*boost),damage:Math.round(u.damage*boost*damageMultiplier),heal:Math.round((u.heal||0)*boost),skillDamage:Math.round((u.skillDamage||0)*boost*damageMultiplier),skillCooldown:0};if(game.mode==='pvp'){game.pendingSpawns=(game.pendingSpawns||0)+1;sendPvpUnit(type,unit);}else game.units.push(unit);playTone(440,.1,'triangle',.08); }
 
 function activateThiefSkill(){
   if(!game?.running)return;const army=game.mode==='pvp'?pvpLocalArmy():game.units,direction=game.mode==='pvp'&&!isPvpPlayerOne()?-1:1;

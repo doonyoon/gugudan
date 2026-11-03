@@ -5,7 +5,7 @@ const {randomUUID,randomInt}=require('crypto');
 
 dns.setDefaultResultOrder('ipv4first');
 
-const emptyProgress = () => ({ gold:0, highestStage:0, cleared:[], owned:['runner','tank','fighter','mage'], loadout:['runner','tank','fighter','mage'], levels:{runner:1,tank:1,fighter:1,mage:1}, redeemedCodes:[] });
+const emptyProgress = () => ({ gold:0, highestStage:0, cleared:[], owned:['runner','tank','fighter','mage'], loadout:['runner','tank','fighter','mage'], levels:{runner:1,tank:1,fighter:1,mage:1}, redeemedCodes:[], shopPurchases:[] });
 function sanitizeProgress(value){const source=value&&typeof value==='object'?value:{};const text=JSON.stringify({...emptyProgress(),...source});if(text.length>100000)throw new Error('Progress is too large');return JSON.parse(text);}
 function codedError(code){const error=new Error(code);error.code=code;return error;}
 const PVP_ROOM_CODE_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

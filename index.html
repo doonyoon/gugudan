@@ -18,7 +18,7 @@
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"VideoGame","name":"고양이 성채전","url":"https://doonyoon.github.io/gugudan/","description":"고양이 부대를 편성하고 20개 스테이지와 보스를 공략하는 무료 웹 디펜스 게임","inLanguage":"ko-KR","genre":["디펜스","전략","캐주얼"],"gamePlatform":"Web Browser","applicationCategory":"Game","operatingSystem":"Any","isAccessibleForFree":true,"author":{"@type":"Person","name":"doonyoon"}}
   </script>
-  <link rel="stylesheet" href="style.css?v=20261006-reset1">
+  <link rel="stylesheet" href="style.css?v=20261103-shop1">
 </head>
 <body>
   <aside class="orientation-lock" id="orientation-lock" aria-live="polite">
@@ -69,6 +69,7 @@
         <button id="logout-button" class="icon-button logout-button" type="button">로그아웃</button>
         <button id="delete-account-button" class="icon-button delete-account-button" type="button" aria-label="계정 삭제">탈퇴</button>
         <div class="gold-display" title="보유 골드"><span>🪙</span><strong id="gold">0</strong></div>
+        <button id="shop-button" class="icon-button shop-icon" type="button" aria-label="코인 상점">🛒</button>
         <button id="lineup-button" class="icon-button lineup-icon" type="button" aria-label="출전 슬롯 편성">편성</button>
         <button id="gacha-button" class="icon-button gacha-icon" type="button" aria-label="캐릭터 뽑기">🎁</button>
         <button id="ranking-button" class="icon-button ranking-icon" type="button" aria-label="랭킹">🏆</button>
@@ -177,6 +178,16 @@
     </form>
     <div class="collection" id="collection"></div>
   </dialog>
+  <dialog id="shop-dialog" class="shop-dialog">
+    <button class="dialog-close" id="close-shop" type="button" aria-label="닫기">×</button>
+    <header class="shop-header">
+      <div><p>PERMANENT UPGRADE SHOP</p><h2>고양이 보급 상점</h2></div>
+      <div class="shop-balance"><span>보유 코인</span><strong>🪙 <b id="shop-coin-balance">0</b></strong></div>
+    </header>
+    <p class="shop-description">코인으로 영구 업그레이드를 구매하세요. 전투 강화 효과는 일반 스테이지에만 적용되며 PVP에는 적용되지 않습니다.</p>
+    <div id="shop-message" class="shop-message" role="status">상품은 계정당 한 번씩 구매할 수 있습니다.</div>
+    <section id="shop-grid" class="shop-grid" aria-label="상점 상품"></section>
+  </dialog>
   <dialog id="lineup-dialog" class="lineup-dialog">
     <button class="dialog-close" id="close-lineup" type="button" aria-label="닫기">×</button>
     <h2>출전 슬롯 편성</h2>
@@ -284,6 +295,6 @@
   <iframe id="bgm-player" class="bgm-player" title="게임 배경음악" allow="autoplay"></iframe>
   <audio id="final-stage-bgm" class="bgm-player" src="assets/audio/stage-20-green-sans.mp3" loop preload="auto"></audio>
   <script src="sprite-frames.js?v=20260929-sprites3"></script>
-  <script src="game.js?v=20261030-pvp-owned3"></script>
+  <script src="game.js?v=20261103-shop1"></script>
 </body>
 </html>

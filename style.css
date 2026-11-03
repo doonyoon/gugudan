@@ -30,6 +30,7 @@ h1 { margin:1px 0 0; font:clamp(1.7rem,4vw,2.5rem)/1 "Black Han Sans",sans-serif
 .top-actions { display:flex; align-items:center; gap:8px; }
 .gold-display { min-width:82px; height:42px; display:flex; align-items:center; justify-content:center; gap:5px; padding:0 10px; border:2px solid #66572c; border-radius:14px; background:#292415; color:var(--yellow); }
 .gacha-icon { background:linear-gradient(145deg,#6d3c87,#392551); }
+.shop-icon { background:linear-gradient(145deg,#68b924,#2f6517); color:#f4ffd7; }
 .suggestion-icon { background:linear-gradient(145deg,#3d5e86,#24344e); }
 .community-icon { background:linear-gradient(145deg,#416251,#233d34); }
 .chat-icon { background:linear-gradient(145deg,#613c79,#332248); }
@@ -125,6 +126,25 @@ dialog li { margin:10px 0; line-height:1.6; }
 .gacha-dialog { max-height:88svh; overflow-y:auto; text-align:center; }
 .gacha-dialog h2 { margin-bottom:4px; }
 .gacha-dialog p { color:#c4c9df; }
+.shop-dialog { width:min(920px,calc(100% - 24px)); max-height:90svh; overflow-y:auto; border-color:#65b82c; background:linear-gradient(155deg,#182b15,#111827 52%,#171b31); }
+.shop-header { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:2px 38px 13px 2px; border-bottom:1px solid rgba(179,239,93,.3); }
+.shop-header p { margin:0 0 3px; color:#9edf4e; font-size:.68rem; font-weight:900; letter-spacing:.13em; }
+.shop-header h2 { margin:0; font-size:1.75rem; }
+.shop-balance { min-width:150px; padding:9px 14px; border:2px solid #78833b; border-radius:13px; background:#292b17; text-align:right; }
+.shop-balance span,.shop-balance strong { display:block; }.shop-balance span { color:#c9d6aa; font-size:.68rem; }.shop-balance strong { color:#ffdf4b; font-size:1.1rem; }
+.shop-description { margin:13px 0 8px; color:#ced6c5; font-size:.86rem; line-height:1.55; }
+.shop-message { min-height:22px; margin-bottom:10px; color:#b8d99a; font-size:.78rem; }.shop-message.success { color:#77f0be; }.shop-message.error { color:#ff9eae; }
+.shop-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.shop-card { --shop-accent:#7be82f; position:relative; min-height:235px; overflow:hidden; display:flex; flex-direction:column; align-items:center; padding:14px 12px 12px; border:2px solid var(--shop-accent); border-radius:14px; background:linear-gradient(160deg,color-mix(in srgb,var(--shop-accent) 28%,#17202c),#15192b 62%); text-align:center; box-shadow:inset 0 0 28px rgba(0,0,0,.25); }
+.shop-card.cyan { --shop-accent:#35d9ed; }.shop-card.orange { --shop-accent:#ff994d; }.shop-card.red { --shop-accent:#ff526b; }.shop-card.purple { --shop-accent:#b878ff; }.shop-card.gold { --shop-accent:#ffd447; }
+.shop-card::before { content:''; position:absolute; inset:auto -25% 40px; height:80px; background:radial-gradient(ellipse,var(--shop-accent),transparent 66%); opacity:.2; }
+.shop-product-icon { position:relative; display:grid; place-items:center; width:86px; height:86px; margin:2px auto 7px; border:2px solid rgba(255,255,255,.65); border-radius:25px; background:rgba(5,12,25,.38); font-size:3.4rem; filter:drop-shadow(0 7px 8px rgba(0,0,0,.4)); transform:rotate(-3deg); }
+.shop-card h3 { position:relative; margin:0; font-size:1.05rem; }.shop-card p { position:relative; flex:1; margin:5px 0 10px; color:#e0e8f3; font-size:.75rem; line-height:1.45; }
+.shop-card button { position:relative; min-width:126px; padding:8px 13px; border:2px solid #fff780; border-radius:10px; background:linear-gradient(#f4ff38,#96e600); color:#243000; font-weight:900; cursor:pointer; box-shadow:0 4px 0 #548c00; }
+.shop-card button:active:not(:disabled) { transform:translateY(3px); box-shadow:0 1px 0 #548c00; }.shop-card button:disabled { border-color:#78818f; background:#4b5262; color:#d7dae1; box-shadow:none; cursor:not-allowed; }
+.shop-card.purchased { border-color:#5f6b78; filter:saturate(.45); }.shop-card.purchased::after { content:'구매 완료'; position:absolute; top:10px; right:-31px; width:120px; padding:3px; background:#4a5262; color:#fff; font-size:.62rem; font-weight:900; transform:rotate(38deg); }
+@media (max-width:720px) { .shop-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.shop-card { min-height:215px; }.shop-header { align-items:flex-start; }.shop-header h2 { font-size:1.35rem; }.shop-balance { min-width:125px; } }
+@media (max-width:430px) { .shop-grid { grid-template-columns:1fr; }.shop-header { flex-direction:column; }.shop-balance { width:100%; text-align:left; } }
 .gacha-stage { --prize-color:#ffe27a; position:relative; width:100%; height:270px; display:grid; place-items:center; margin:12px auto; overflow:hidden; isolation:isolate; border:1px solid #98639d; border-radius:14px; background:radial-gradient(ellipse at 50% 110%,#e487f0 0,#844b9b 28%,#301839 64%,#1b102a 100%); }
 .gacha-rays { position:absolute; width:190px; height:190px; opacity:0; background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.8) 0 8deg,transparent 8deg 18deg); border-radius:50%; }
 .capsule { position:relative; z-index:2; width:112px; height:112px; filter:drop-shadow(0 12px 8px #160c23aa); }
