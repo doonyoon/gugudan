@@ -75,7 +75,7 @@ const UNIT_TYPES = {
   ,paladin: { cost: 760, hp: 1250, damage: 145, speed: 20, range: 68, cooldown: 13, rate: 1.45, color: '#e8e2bd', label: '성기사냥', icon: '♜', desc: '철벽의 수호자', rarity: '슈퍼 레어' }
   ,phoenix: { cost: 1100, hp: 780, damage: 310, speed: 45, range: 195, cooldown: 17, rate: 1.65, color: '#ffad77', label: '불사조냥', icon: '♨', desc: '불꽃 초장거리 공격', rarity: '울트라 슈퍼 레어', ranged: true }
   ,chronos: { cost: 1550, hp: 1550, damage: 520, speed: 26, range: 280, cooldown: 24, rate: 2, color: '#9ee8e3', label: '시간신냥', icon: '⌛', desc: '시간을 초월한 포격', rarity: '레전드 레어', ranged: true }
-  ,thief: { cost: 1200, hp: 720, damage: 260, skillDamage: 1800, skillCooldown: 25, speed: 56, range: 68, cooldown: 17, rate: .9, color: '#79a9ff', label: '괴도냥', icon: '♦', desc: '성 앞 순간이동 강탈 스킬', rarity: '슈퍼 레전드 레어' }
+  ,thief: { cost: 2000, hp: 720, damage: 260, skillDamage: 1800, skillCooldown: 25, speed: 56, range: 68, cooldown: 17, rate: .9, color: '#79a9ff', label: '괴도냥', icon: '♦', desc: '성 앞 순간이동 강탈 스킬', rarity: '슈퍼 레전드 레어' }
 };
 const ENEMY_TYPES = {
   pup: { hp: 95, damage: 13, speed: 34, range: 34, rate: .8, reward: 28, color: '#d9a66f', label:'들개' },
@@ -155,6 +155,7 @@ const STAGE_THEMES = [
 const STAGE_BACKGROUNDS=Array.from({length:20},(_,index)=>`assets/backgrounds/stage-${String(index+1).padStart(2,'0')}.png`);
 const stageBackgroundImages=lazyGameImages(STAGE_BACKGROUNDS.map((source,index)=>[index,source]));
 const baseImages=lazyGameImages([['player','assets/backgrounds/player-castle.png'],['enemy','assets/backgrounds/enemy-castle.png']]);
+const BASE_GROUND_SINK=24;
 const BASIC_UNITS = ['runner','tank','fighter','mage'];
 const RARITY_RANK = {'기본':0,'노멀':1,'EX':2,'레어':3,'슈퍼 레어':4,'울트라 슈퍼 레어':5,'레전드 레어':6,'슈퍼 레전드 레어':7};
 const GACHA_POOLS = {
@@ -737,7 +738,7 @@ function drawBackground(w,h){
   if(theme.kind==='space'){ctx.fillStyle='#8176c5';for(let x=15;x<w;x+=115){ctx.beginPath();ctx.ellipse(x,ground-8,38,14,-.2,0,7);ctx.fill();}}
   ctx.fillStyle=theme.ground;ctx.fillRect(0,ground,w,h-ground);ctx.fillStyle=theme.hill;for(let x=0;x<w;x+=55){ctx.beginPath();ctx.arc(x,ground+10,42,Math.PI,0);ctx.fill();}
 }
-function drawBase(x,y,cat,hp){ctx.save();ctx.translate(x,y);if(hp<=0){ctx.rotate(.12);ctx.globalAlpha=.5;}const image=cat?baseImages.player:baseImages.enemy;if(image.complete&&image.naturalWidth){const width=Math.min(180,battleWidth()*.22),height=width*(image.naturalHeight/image.naturalWidth);ctx.drawImage(image,-width/2,-height,width,height);ctx.restore();return;}ctx.fillStyle=cat?'#e9e3cc':'#443b55';ctx.strokeStyle='#151827';ctx.lineWidth=4;ctx.fillRect(-38,-88,76,88);ctx.strokeRect(-38,-88,76,88);ctx.fillStyle=cat?'#ffd447':'#ef476f';ctx.beginPath();ctx.moveTo(-47,-88);ctx.lineTo(0,-125);ctx.lineTo(47,-88);ctx.fill();ctx.stroke();ctx.fillStyle='#17192a';ctx.fillRect(-12,-35,24,35);ctx.fillStyle='#fff';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.fillText(cat?'ฅ':'☠',0,-56);ctx.restore();}
+function drawBase(x,y,cat,hp){ctx.save();ctx.translate(x,y+BASE_GROUND_SINK);if(hp<=0){ctx.rotate(.12);ctx.globalAlpha=.5;}const image=cat?baseImages.player:baseImages.enemy;if(image.complete&&image.naturalWidth){const width=Math.min(180,battleWidth()*.22),height=width*(image.naturalHeight/image.naturalWidth);ctx.drawImage(image,-width/2,-height,width,height);ctx.restore();return;}ctx.fillStyle=cat?'#e9e3cc':'#443b55';ctx.strokeStyle='#151827';ctx.lineWidth=4;ctx.fillRect(-38,-88,76,88);ctx.strokeRect(-38,-88,76,88);ctx.fillStyle=cat?'#ffd447':'#ef476f';ctx.beginPath();ctx.moveTo(-47,-88);ctx.lineTo(0,-125);ctx.lineTo(47,-88);ctx.fill();ctx.stroke();ctx.fillStyle='#17192a';ctx.fillRect(-12,-35,24,35);ctx.fillStyle='#fff';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.fillText(cat?'ฅ':'☠',0,-56);ctx.restore();}
 function drawUnit(u){
   ctx.save();ctx.translate(u.x,u.y);if(u.hit)ctx.globalAlpha=.55;
   const sprite=spriteImages[u.unitType];if(sprite?.complete&&sprite.naturalWidth){drawSpriteUnit(u,sprite);healthMini(u);ctx.restore();return;}
