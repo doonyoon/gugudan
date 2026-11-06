@@ -164,6 +164,9 @@ const GACHA_POOLS = {
 const GACHA_RATES = [
   {rarity:'노멀',rate:50},{rarity:'EX',rate:25},{rarity:'레어',rate:9},{rarity:'슈퍼 레어',rate:10.6},{rarity:'울트라 슈퍼 레어',rate:5},{rarity:'레전드 레어',rate:.3},{rarity:'슈퍼 레전드 레어',rate:.1}
 ];
+const CHARACTER_SHOP_RATES = [
+  {rarity:'노멀',rate:58.5},{rarity:'EX',rate:25},{rarity:'레어',rate:9},{rarity:'슈퍼 레어',rate:6.6},{rarity:'울트라 슈퍼 레어',rate:.5},{rarity:'레전드 레어',rate:.3},{rarity:'슈퍼 레전드 레어',rate:.1}
+];
 const GOLDEN_GACHA_RATES = [
   {rarity:'노멀',rate:25.15},{rarity:'EX',rate:12.5},{rarity:'레어',rate:22.5},{rarity:'슈퍼 레어',rate:26.5},{rarity:'울트라 슈퍼 레어',rate:12.5},{rarity:'레전드 레어',rate:.75},{rarity:'슈퍼 레전드 레어',rate:.1}
 ];
@@ -574,7 +577,7 @@ function characterShopRefreshCost(){return (Math.max(0,Math.floor(Number(progres
 function generateCharacterShopOffers(previous=[],forceUltra=false){
   const offers=[],old=new Set(previous),add=type=>{if(type&&GACHA_UNITS.includes(type)&&!offers.includes(type)){offers.push(type);return true;}return false;};let attempts=0;
   if(forceUltra){const ultraPool=GACHA_POOLS['울트라 슈퍼 레어'];add(ultraPool[Math.floor(Math.random()*ultraPool.length)]);}
-  while(offers.length<CHARACTER_SHOP_SLOTS&&attempts++<160){const type=rollGacha(Math.random(),GACHA_RATES);if(!old.has(type)||attempts>80)add(type);}
+  while(offers.length<CHARACTER_SHOP_SLOTS&&attempts++<160){const type=rollGacha(Math.random(),CHARACTER_SHOP_RATES);if(!old.has(type)||attempts>80)add(type);}
   for(const type of GACHA_UNITS){if(offers.length>=CHARACTER_SHOP_SLOTS)break;add(type);}
   return offers;
 }
