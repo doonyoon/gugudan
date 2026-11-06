@@ -18,7 +18,8 @@ function tokenUser(request){return userFromToken(tokenFrom(request));}
 function makeSession(id){const payload=Buffer.from(JSON.stringify({id,expires:Date.now()+1000*60*60*24*30})).toString('base64url'),signature=crypto.createHmac('sha256',sessionSecret).update(payload).digest('base64url');return `${payload}.${signature}`;}
 async function passwordHash(password,salt){return (await scrypt(password,salt,64)).toString('hex');}
 function developerProgress(){const owned=[...pvpUnits];return {...emptyProgress(),gold:Number.MAX_SAFE_INTEGER,highestStage:19,cleared:Array.from({length:20},(_,i)=>i),owned,levels:Object.fromEntries(owned.map(type=>[type,99])),developer:true};}
-const pvpUnits=new Set(['runner','tank','fighter','mage','ninja','dragon','gunner','titan','boxer','chef','cosmic','emperor','farmer','sleepy','pirate','medic','samurai','rocket','phantom','paladin','phoenix','chronos','thief']);
+const pvpUnits=new Set(['runner','tank','fighter','mage','ninja','dragon','gunner','titan','boxer','chef','cosmic','emperor','farmer','sleepy','pirate','medic','samurai','rocket','bomber','phantom','paladin','phoenix','chronos','thief']);
+const nonTradeableUnits=new Set(['runner','tank','fighter','mage']);
 function cachePvpRoom(room){if(!room?.id)return room;if(room.status==='active')pvpRoomCache.set(room.id,room);else pvpRoomCache.delete(room.id);return room;}
 function retireCachedPvpRooms(userId,keepId){for(const [roomId,room] of pvpRoomCache){if(roomId!==keepId&&[room.player_one,room.player_two].includes(userId)){broadcastPvp(roomId,{type:'room',room:{...room,status:'cancelled'}});pvpRoomCache.delete(roomId);}}}
 async function activePvpRoom(roomId,userId){const cached=pvpRoomCache.get(roomId);if(cached?.status==='active'&&[cached.player_one,cached.player_two].includes(userId))return cached;return cachePvpRoom(await store.getPvpRoom(roomId,userId));}
@@ -207,6 +208,23 @@ async function api(request,response,pathname){
       if(!await store.removeFriend(id,friendMatch[1]))return json(response,404,{error:'친구 관계를 찾을 수 없습니다.'});
       return json(response,200,{deleted:true});
     }
+    if(request.method==='GET'&&pathname==='/api/trades'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
+      const relations=await store.listFriends(id);return json(response,200,{trades:await store.listCharacterTrades(id,false),friends:relations.friends||[]});
+    }
+    if(request.method==='POST'&&pathname==='/api/trades'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,400,{error:'개발자 계정은 거래 상품을 등록할 수 없습니다.'});
+      const {buyerId,unitType,price}=await readJson(request),buyer=typeof buyerId==='string'?buyerId.trim():'',unit=typeof unitType==='string'?unitType.trim():'',amount=Math.floor(Number(price));
+      if(!validId(buyer)||buyer===id)return json(response,400,{error:'거래할 친구를 올바르게 선택해 주세요.'});if(!pvpUnits.has(unit)||nonTradeableUnits.has(unit))return json(response,400,{error:'기본 캐릭터는 거래할 수 없습니다.'});if(!Number.isInteger(amount)||amount<100||amount>1000000)return json(response,400,{error:'판매 가격은 100~1,000,000 코인으로 정해 주세요.'});
+      const trade=await store.createCharacterTrade(id,buyer,unit,amount);await store.createNotification(developerId,id,'trade_review',`${id}님이 ${unit} 거래 승인을 요청했습니다.`);return json(response,201,{trade});
+    }
+    const tradeMatch=pathname.match(/^\/api\/trades\/(\d+)$/);
+    if(request.method==='DELETE'&&tradeMatch){const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const trade=await store.cancelCharacterTrade(tradeMatch[1],id);if(!trade)return json(response,404,{error:'취소할 거래를 찾을 수 없습니다.'});return json(response,200,{trade});}
+    const tradeBuyMatch=pathname.match(/^\/api\/trades\/(\d+)\/buy$/);
+    if(request.method==='POST'&&tradeBuyMatch){const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const result=await store.buyCharacterTrade(tradeBuyMatch[1],id);await store.createNotification(result.trade.seller_id,id,'trade_sold',`${id}님이 캐릭터를 ${Number(result.trade.price).toLocaleString()} 코인에 구매했습니다.`);return json(response,200,{trade:result.trade,progress:result.buyerProgress});}
+    if(request.method==='GET'&&pathname==='/api/admin/trades'){const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 거래를 확인할 수 있습니다.'});return json(response,200,{trades:await store.listCharacterTrades(id,true)});}
+    const tradeReviewMatch=pathname.match(/^\/api\/admin\/trades\/(\d+)\/(approve|reject)$/);
+    if(request.method==='POST'&&tradeReviewMatch){const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 거래를 승인할 수 있습니다.'});const approve=tradeReviewMatch[2]==='approve',trade=await store.reviewCharacterTrade(tradeReviewMatch[1],approve,id);if(!trade)return json(response,404,{error:'대기 중인 거래를 찾을 수 없습니다.'});await store.createNotification(trade.seller_id,id,approve?'trade_approved':'trade_rejected',`캐릭터 거래가 ${approve?'승인':'거절'}되었습니다.`);if(approve)await store.createNotification(trade.buyer_id,trade.seller_id,'trade_available',`${trade.seller_id}님의 캐릭터 상품을 구매할 수 있습니다.`);return json(response,200,{trade});}
     if(request.method==='GET'&&pathname==='/api/chat/contacts'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});return json(response,200,{contacts:await store.listChatContacts(id,developerId)});
     }
@@ -260,7 +278,7 @@ async function api(request,response,pathname){
       return json(response,200,{suggestion});
     }
     return json(response,404,{error:'API를 찾을 수 없습니다.'});
-  }catch(error){console.error(error);if(error.code==='friend_request_exists')return json(response,409,{error:'이미 대기 중인 친구 요청이 있습니다.'});if(error.code==='friend_request_not_found')return json(response,404,{error:'친구 요청을 찾을 수 없습니다.'});const messages={23505:'이미 사용 중인 아이디입니다.',coupon_not_found:'존재하지 않거나 종료된 코드예요.',coupon_used:'이미 사용한 코드예요.',account_not_found:'계정을 찾을 수 없습니다.'};return json(response,messages[error.code]?400:500,{error:messages[error.code]||'서버 저장 중 오류가 발생했습니다.'});}
+  }catch(error){console.error(error);if(error.code==='friend_request_exists')return json(response,409,{error:'이미 대기 중인 친구 요청이 있습니다.'});if(error.code==='friend_request_not_found')return json(response,404,{error:'친구 요청을 찾을 수 없습니다.'});const messages={23505:'이미 사용 중인 아이디입니다.',coupon_not_found:'존재하지 않거나 종료된 코드예요.',coupon_used:'이미 사용한 코드예요.',account_not_found:'계정을 찾을 수 없습니다.',trade_friend_required:'친구 관계인 회원끼리만 거래할 수 있습니다.',trade_unit_missing:'판매자가 해당 캐릭터를 보유하고 있지 않습니다.',trade_buyer_owns:'구매자가 이미 해당 캐릭터를 보유하고 있습니다.',trade_already_listed:'이 캐릭터는 이미 거래 승인 또는 판매 대기 중입니다.',trade_not_available:'구매할 수 있는 승인 상품이 아닙니다.',trade_gold_short:'구매에 필요한 코인이 부족합니다.'};const conflict=['trade_already_listed','trade_buyer_owns','trade_not_available'].includes(error.code);return json(response,messages[error.code]?(conflict?409:400):500,{error:messages[error.code]||'서버 저장 중 오류가 발생했습니다.'});}
 }
 function handle(request,response){
   const pathname=decodeURIComponent(request.url.split('?')[0]);response.setHeader('X-Content-Type-Options','nosniff');response.setHeader('Referrer-Policy','strict-origin-when-cross-origin');

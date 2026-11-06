@@ -18,7 +18,7 @@
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"VideoGame","name":"고양이 성채전","url":"https://doonyoon.github.io/gugudan/","description":"고양이 부대를 편성하고 20개 스테이지와 보스를 공략하는 무료 웹 디펜스 게임","inLanguage":"ko-KR","genre":["디펜스","전략","캐주얼"],"gamePlatform":"Web Browser","applicationCategory":"Game","operatingSystem":"Any","isAccessibleForFree":true,"author":{"@type":"Person","name":"doonyoon"}}
   </script>
-  <link rel="stylesheet" href="style.css?v=20261103-shop5">
+  <link rel="stylesheet" href="style.css?v=20261106-trade1">
 </head>
 <body>
   <aside class="orientation-lock" id="orientation-lock" aria-live="polite">
@@ -74,7 +74,8 @@
         <button id="gacha-button" class="icon-button gacha-icon" type="button" aria-label="캐릭터 뽑기">🎁</button>
         <button id="ranking-button" class="icon-button ranking-icon" type="button" aria-label="랭킹">🏆</button>
         <button id="pvp-button" class="icon-button pvp-icon" type="button" aria-label="실시간 대전">⚔</button>
-        <button id="friends-button" class="icon-button friends-icon" type="button" aria-label="친구">👥</button>
+        <button id="friends-button" class="icon-button friends-icon" type="button" aria-label="친구">🤝</button>
+        <button id="trade-button" class="icon-button trade-icon" type="button" aria-label="친구 캐릭터 거래">⇄</button>
         <button id="notification-button" class="icon-button notification-icon" type="button" aria-label="알림">🔔<b id="notification-badge" class="notification-badge hidden">0</b></button>
         <button id="chat-button" class="icon-button chat-icon" type="button" aria-label="1대1 채팅">✉</button>
         <button id="community-button" class="icon-button community-icon" type="button" aria-label="커뮤니티">☰</button>
@@ -244,6 +245,20 @@
     <h3>받은 친구 요청</h3><div id="friend-request-list" class="friend-list"></div>
     <h3>내 친구</h3><div id="friend-list" class="friend-list"></div>
   </dialog>
+  <dialog id="trade-dialog" class="trade-dialog">
+    <button class="dialog-close" id="close-trade" type="button" aria-label="닫기">×</button>
+    <h2>⇄ 친구 캐릭터 거래소</h2>
+    <p>친구에게 판매할 상품을 등록하면 개발자 승인 후 지정한 친구가 구매할 수 있습니다.</p>
+    <form id="trade-create-form" class="trade-create-form">
+      <label>거래할 친구<select id="trade-buyer" required></select></label>
+      <label>판매 캐릭터<select id="trade-unit" required></select></label>
+      <label>판매 가격<input id="trade-price" type="number" min="100" max="1000000" step="100" value="1000" required></label>
+      <button type="submit">승인 요청</button>
+    </form>
+    <small id="trade-message" role="status"></small>
+    <h3>내 거래 상품</h3>
+    <div id="trade-list" class="trade-list"></div>
+  </dialog>
   <dialog id="ranking-dialog" class="ranking-dialog">
     <button class="dialog-close" id="close-ranking" type="button" aria-label="닫기">×</button>
     <h2>🏆 TOP 3 랭킹</h2>
@@ -294,11 +309,12 @@
       <small id="coupon-admin-message" role="status"></small>
       <div id="coupon-admin-list" class="coupon-admin-list"></div>
     </section>
+    <section class="trade-admin"><h3>캐릭터 거래 승인</h3><p>플레이어가 만든 상품을 확인한 뒤 승인하거나 거절하세요.</p><div id="trade-admin-list" class="trade-admin-list"></div></section>
     <section class="reset-admin"><h3>비밀번호 재설정 요청</h3><p>친구에게 본인 확인을 받은 뒤 승인하세요. 6자리 코드는 한 번만 보여 주며 30분 후 만료됩니다.</p><div id="password-reset-request-list" class="password-reset-request-list"></div></section>
   </dialog>
   <iframe id="bgm-player" class="bgm-player" title="게임 배경음악" allow="autoplay"></iframe>
   <audio id="final-stage-bgm" class="bgm-player" src="assets/audio/stage-20-green-sans.mp3" loop preload="auto"></audio>
   <script src="sprite-frames.js?v=20260929-sprites3"></script>
-  <script src="game.js?v=20261106-shop6"></script>
+  <script src="game.js?v=20261106-trade1"></script>
 </body>
 </html>
