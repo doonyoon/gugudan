@@ -216,7 +216,7 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,400,{error:'개발자 계정은 거래 상품을 등록할 수 없습니다.'});
       const {buyerId,unitType,price}=await readJson(request),buyer=typeof buyerId==='string'?buyerId.trim():'',unit=typeof unitType==='string'?unitType.trim():'',amount=Math.floor(Number(price));
       if(!validId(buyer)||buyer===id)return json(response,400,{error:'거래할 친구를 올바르게 선택해 주세요.'});if(!pvpUnits.has(unit)||nonTradeableUnits.has(unit))return json(response,400,{error:'기본 캐릭터는 거래할 수 없습니다.'});if(!Number.isInteger(amount)||amount<100||amount>1000000)return json(response,400,{error:'판매 가격은 100~1,000,000 코인으로 정해 주세요.'});
-      const trade=await store.createCharacterTrade(id,buyer,unit,amount);await store.createNotification(developerId,id,'trade_review',`${id}님이 ${unit} 거래 승인을 요청했습니다.`);return json(response,201,{trade});
+      const trade=await store.createCharacterTrade(id,buyer,unit,amount);await store.createNotification(buyer,id,'trade_available',`${id}님이 친구 전용 캐릭터 거래를 보냈습니다.`);return json(response,201,{trade});
     }
     const tradeMatch=pathname.match(/^\/api\/trades\/(\d+)$/);
     if(request.method==='DELETE'&&tradeMatch){const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const trade=await store.cancelCharacterTrade(tradeMatch[1],id);if(!trade)return json(response,404,{error:'취소할 거래를 찾을 수 없습니다.'});return json(response,200,{trade});}
@@ -225,6 +225,21 @@ async function api(request,response,pathname){
     if(request.method==='GET'&&pathname==='/api/admin/trades'){const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 거래를 확인할 수 있습니다.'});return json(response,200,{trades:await store.listCharacterTrades(id,true)});}
     const tradeReviewMatch=pathname.match(/^\/api\/admin\/trades\/(\d+)\/(approve|reject)$/);
     if(request.method==='POST'&&tradeReviewMatch){const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 거래를 승인할 수 있습니다.'});const approve=tradeReviewMatch[2]==='approve',trade=await store.reviewCharacterTrade(tradeReviewMatch[1],approve,id);if(!trade)return json(response,404,{error:'대기 중인 거래를 찾을 수 없습니다.'});await store.createNotification(trade.seller_id,id,approve?'trade_approved':'trade_rejected',`캐릭터 거래가 ${approve?'승인':'거절'}되었습니다.`);if(approve)await store.createNotification(trade.buyer_id,trade.seller_id,'trade_available',`${trade.seller_id}님의 캐릭터 상품을 구매할 수 있습니다.`);return json(response,200,{trade});}
+    if(request.method==='GET'&&pathname==='/api/products'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});return json(response,200,{products:await store.listCharacterProducts(id,false)});
+    }
+    if(request.method==='POST'&&pathname==='/api/products'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,400,{error:'개발자 계정은 공개 상품을 등록할 수 없습니다.'});
+      const {unitType,price}=await readJson(request),unit=typeof unitType==='string'?unitType.trim():'',amount=Math.floor(Number(price));if(!pvpUnits.has(unit)||nonTradeableUnits.has(unit))return json(response,400,{error:'기본 캐릭터는 상품으로 등록할 수 없습니다.'});if(!Number.isInteger(amount)||amount<100||amount>1000000)return json(response,400,{error:'판매 가격은 100~1,000,000 코인으로 정해 주세요.'});
+      const product=await store.createCharacterProduct(id,unit,amount);await store.createNotification(developerId,id,'product_review',`${id}님이 공개 상품 승인을 요청했습니다.`);return json(response,201,{product});
+    }
+    const productMatch=pathname.match(/^\/api\/products\/(\d+)$/);
+    if(request.method==='DELETE'&&productMatch){const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const product=await store.cancelCharacterProduct(productMatch[1],id);if(!product)return json(response,404,{error:'취소할 상품을 찾을 수 없습니다.'});return json(response,200,{product});}
+    const productBuyMatch=pathname.match(/^\/api\/products\/(\d+)\/buy$/);
+    if(request.method==='POST'&&productBuyMatch){const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const result=await store.buyCharacterProduct(productBuyMatch[1],id);await store.createNotification(result.trade.seller_id,id,'product_sold',`${id}님이 공개 상품을 ${Number(result.trade.price).toLocaleString()} 코인에 구매했습니다.`);return json(response,200,{product:result.trade,progress:result.buyerProgress});}
+    if(request.method==='GET'&&pathname==='/api/admin/products'){const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 공개 상품을 확인할 수 있습니다.'});return json(response,200,{products:await store.listCharacterProducts(id,true)});}
+    const productReviewMatch=pathname.match(/^\/api\/admin\/products\/(\d+)\/(approve|reject)$/);
+    if(request.method==='POST'&&productReviewMatch){const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 공개 상품을 승인할 수 있습니다.'});const approve=productReviewMatch[2]==='approve',product=await store.reviewCharacterProduct(productReviewMatch[1],approve,id);if(!product)return json(response,404,{error:'승인 대기 중인 공개 상품을 찾을 수 없습니다.'});await store.createNotification(product.seller_id,id,approve?'product_approved':'product_rejected',`공개 상품이 ${approve?'승인':'거절'}되었습니다.`);return json(response,200,{product});}
     if(request.method==='GET'&&pathname==='/api/chat/contacts'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});return json(response,200,{contacts:await store.listChatContacts(id,developerId)});
     }
