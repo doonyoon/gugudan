@@ -59,10 +59,10 @@ async function api(request,response,pathname){
     }
     if(request.method==='POST'&&pathname==='/api/login'){
       const {id,password}=await readJson(request);if(id===developerId&&password===developerPassword)return json(response,200,{id,token:makeSession(id),progress:developerProgress()});
-      const account=validId(id)?await store.get(id):null;if(!account||typeof password!=='string'||account.password_hash!==await passwordHash(password,account.salt))return json(response,401,{error:'아이디 또는 비밀번호가 맞지 않습니다.'});return json(response,200,{id,token:makeSession(id),progress:account.progress||emptyProgress()});
+      const account=validId(id)?await store.get(id):null;if(!account||typeof password!=='string'||account.password_hash!==await passwordHash(password,account.salt))return json(response,401,{error:'아이디 또는 비밀번호가 맞지 않습니다.'});await store.touchPresence(id,true);return json(response,200,{id,token:makeSession(id),progress:account.progress||emptyProgress()});
     }
     if(request.method==='GET'&&pathname==='/api/session'){
-      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,200,{id,progress:developerProgress()});const account=await store.get(id);if(!account)return json(response,401,{error:'계정을 찾을 수 없습니다.'});return json(response,200,{id,progress:account.progress||emptyProgress()});
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,200,{id,progress:developerProgress()});const account=await store.get(id);if(!account)return json(response,401,{error:'계정을 찾을 수 없습니다.'});await store.touchPresence(id,true);return json(response,200,{id,progress:account.progress||emptyProgress()});
     }
     if(request.method==='GET'&&pathname==='/api/notifications'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const notifications=await store.listNotifications(id);return json(response,200,{notifications,unread:notifications.filter(item=>!item.read_at).length});
@@ -73,7 +73,10 @@ async function api(request,response,pathname){
     if(request.method==='PUT'&&pathname==='/api/progress'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,200,{saved:true});const {progress}=await readJson(request);return json(response,await store.saveProgress(id,sanitizeProgress(progress))?200:404,{saved:true});
     }
-    if(request.method==='POST'&&pathname==='/api/logout')return json(response,200,{ok:true});
+    if(request.method==='POST'&&pathname==='/api/presence'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id!==developerId)await store.touchPresence(id,true);return json(response,200,{ok:true});
+    }
+    if(request.method==='POST'&&pathname==='/api/logout'){const id=tokenUser(request);if(id&&id!==developerId)await store.touchPresence(id,false);return json(response,200,{ok:true});}
     if(request.method==='POST'&&pathname==='/api/pvp/match'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       const room=await store.joinPvp(id);retireCachedPvpRooms(id,room.id);cachePvpRoom(room);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
@@ -158,8 +161,8 @@ async function api(request,response,pathname){
     }
     if(request.method==='GET'&&pathname==='/api/admin/accounts'){
       const id=tokenUser(request);if(id!==developerId)return json(response,403,{error:'개발자 계정만 회원 목록을 볼 수 있습니다.'});
-      const accounts=await store.listAccounts();
-      return json(response,200,{accounts:accounts.map(account=>({id:account.id,gold:Number(account.progress?.gold||0),highestStage:Number(account.progress?.highestStage||0),createdAt:account.created_at,updatedAt:account.updated_at||account.created_at}))});
+      const accounts=await store.listAccounts(),onlineCutoff=Date.now()-90000;
+      return json(response,200,{accounts:accounts.map(account=>({id:account.id,gold:Number(account.progress?.gold||0),highestStage:Number(account.progress?.highestStage||0),createdAt:account.created_at,updatedAt:account.updated_at||account.created_at,lastSeenAt:account.last_seen_at||null,isOnline:Boolean(account.last_seen_at&&new Date(account.last_seen_at).getTime()>=onlineCutoff)}))});
     }
     if(request.method==='GET'&&pathname==='/api/rankings'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
@@ -229,9 +232,9 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});return json(response,200,{products:await store.listCharacterProducts(id,false)});
     }
     if(request.method==='POST'&&pathname==='/api/products'){
-      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id===developerId)return json(response,400,{error:'개발자 계정은 공개 상품을 등록할 수 없습니다.'});
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
       const {unitType,price}=await readJson(request),unit=typeof unitType==='string'?unitType.trim():'',amount=Math.floor(Number(price));if(!pvpUnits.has(unit)||nonTradeableUnits.has(unit))return json(response,400,{error:'기본 캐릭터는 상품으로 등록할 수 없습니다.'});if(!Number.isInteger(amount)||amount<100||amount>1000000)return json(response,400,{error:'판매 가격은 100~1,000,000 코인으로 정해 주세요.'});
-      const product=await store.createCharacterProduct(id,unit,amount);await store.createNotification(developerId,id,'product_review',`${id}님이 공개 상품 승인을 요청했습니다.`);return json(response,201,{product});
+      const product=await store.createCharacterProduct(id,unit,amount,id===developerId?developerProgress():null);if(id!==developerId)await store.createNotification(developerId,id,'product_review',`${id}님이 공개 상품 승인을 요청했습니다.`);return json(response,201,{product});
     }
     const productMatch=pathname.match(/^\/api\/products\/(\d+)$/);
     if(request.method==='DELETE'&&productMatch){const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const product=await store.cancelCharacterProduct(productMatch[1],id);if(!product)return json(response,404,{error:'취소할 상품을 찾을 수 없습니다.'});return json(response,200,{product});}
