@@ -12,6 +12,7 @@ function allowApiOrigin(request,response){const origin=String(request.headers.or
 function readJson(request){return new Promise((resolve,reject)=>{let body='';request.on('data',chunk=>{body+=chunk;if(body.length>150000){reject(new Error('too_large'));request.destroy();}});request.on('end',()=>{try{resolve(body?JSON.parse(body):{});}catch{reject(new Error('invalid_json'));}});request.on('error',reject);});}
 function validId(id){return typeof id==='string'&&/^[A-Za-z0-9가-힣_]{3,16}$/.test(id);}
 function normalizePvpRoomCode(value){const code=String(value||'').trim().toUpperCase();return /^[A-Z2-9]{6}$/.test(code)?code:'';}
+function normalizePvpWager(value){const amount=Math.floor(Number(value)||0);return Number.isSafeInteger(amount)&&amount>=0&&amount<=1000000?amount:null;}
 function tokenFrom(request){return String(request.headers.authorization||'').replace(/^Bearer\s+/i,'');}
 function userFromToken(token){try{const [payload,signature]=String(token||'').split('.'),expected=crypto.createHmac('sha256',sessionSecret).update(payload).digest('base64url');if(!signature||signature.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))return null;const session=JSON.parse(Buffer.from(payload,'base64url').toString());return session.expires>Date.now()?session.id:null;}catch{return null;}}
 function tokenUser(request){return userFromToken(tokenFrom(request));}
@@ -77,17 +78,30 @@ async function api(request,response,pathname){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id!==developerId)await store.touchPresence(id,true);return json(response,200,{ok:true});
     }
     if(request.method==='POST'&&pathname==='/api/logout'){const id=tokenUser(request);if(id&&id!==developerId)await store.touchPresence(id,false);return json(response,200,{ok:true});}
+    if(request.method==='GET'&&pathname==='/api/pvp/online'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id!==developerId)await store.touchPresence(id,true);return json(response,200,{players:await store.listPvpOnline(id)});
+    }
+    if(request.method==='GET'&&pathname==='/api/pvp/invitations'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(id!==developerId)await store.touchPresence(id,true);return json(response,200,{invitations:await store.listPvpInvitations(id)});
+    }
+    if(request.method==='POST'&&pathname==='/api/pvp/invitations'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {recipientId,wager:rawWager}=await readJson(request),wager=normalizePvpWager(rawWager);if(wager===null)return json(response,400,{error:'내기 코인은 0~1,000,000 사이의 정수로 입력해 주세요.'});if(!validId(recipientId)||recipientId===id)return json(response,400,{error:'초대할 회원을 다시 선택해 주세요.'});const result=await store.createPvpInvitation(id,recipientId,wager,id===developerId);retireCachedPvpRooms(id,result.room.id);return json(response,201,result);
+    }
+    const pvpInviteAction=pathname.match(/^\/api\/pvp\/invitations\/(\d+)\/(accept|reject)$/);
+    if(pvpInviteAction&&request.method==='POST'){
+      const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});if(pvpInviteAction[2]==='reject'){const room=await store.rejectPvpInvitation(pvpInviteAction[1],id);return room?json(response,200,{rejected:true}):json(response,404,{error:'초대장을 찾을 수 없습니다.'});}const room=await store.acceptPvpInvitation(pvpInviteAction[1],id,id===developerId);retireCachedPvpRooms(id,room.id);cachePvpRoom(room);broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
+    }
     if(request.method==='POST'&&pathname==='/api/pvp/match'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
-      const room=await store.joinPvp(id);retireCachedPvpRooms(id,room.id);cachePvpRoom(room);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
+      const {wager:rawWager=0}=await readJson(request),wager=normalizePvpWager(rawWager);if(wager===null)return json(response,400,{error:'내기 코인은 0~1,000,000 사이의 정수로 입력해 주세요.'});const room=await store.joinPvp(id,wager,id===developerId);retireCachedPvpRooms(id,room.id);cachePvpRoom(room);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
     }
     if(request.method==='POST'&&pathname==='/api/pvp/rooms'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});
-      const room=await store.createPvpRoom(id);retireCachedPvpRooms(id,room.id);cachePvpRoom(room);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,201,{room});
+      const {wager:rawWager=0}=await readJson(request),wager=normalizePvpWager(rawWager);if(wager===null)return json(response,400,{error:'내기 코인은 0~1,000,000 사이의 정수로 입력해 주세요.'});const room=await store.createPvpRoom(id,wager,id===developerId);retireCachedPvpRooms(id,room.id);cachePvpRoom(room);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,201,{room});
     }
     if(request.method==='POST'&&pathname==='/api/pvp/rooms/join'){
       const id=tokenUser(request);if(!id)return json(response,401,{error:'로그인이 필요합니다.'});const {code}=await readJson(request),roomCode=normalizePvpRoomCode(code);if(!roomCode)return json(response,400,{error:'방 코드는 영문과 숫자 6자리로 입력해 주세요.'});
-      const room=await store.joinPvpRoom(id,roomCode);if(!room)return json(response,404,{error:'입장할 수 있는 방을 찾지 못했습니다.'});retireCachedPvpRooms(id,room.id);cachePvpRoom(room);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
+      const room=await store.joinPvpRoom(id,roomCode,id===developerId);if(!room)return json(response,404,{error:'입장할 수 있는 방을 찾지 못했습니다.'});retireCachedPvpRooms(id,room.id);cachePvpRoom(room);if(room.status==='active')broadcastPvp(room.id,{type:'room',room});return json(response,200,{room});
     }
     const pvpCancel=pathname.match(/^\/api\/pvp\/rooms\/([0-9a-f-]{36})\/cancel$/i);
     if(pvpCancel&&request.method==='POST'){
@@ -296,7 +310,7 @@ async function api(request,response,pathname){
       return json(response,200,{suggestion});
     }
     return json(response,404,{error:'API를 찾을 수 없습니다.'});
-  }catch(error){console.error(error);if(error.code==='friend_request_exists')return json(response,409,{error:'이미 대기 중인 친구 요청이 있습니다.'});if(error.code==='friend_request_not_found')return json(response,404,{error:'친구 요청을 찾을 수 없습니다.'});const messages={23505:'이미 사용 중인 아이디입니다.',coupon_not_found:'존재하지 않거나 종료된 코드예요.',coupon_used:'이미 사용한 코드예요.',account_not_found:'계정을 찾을 수 없습니다.',trade_friend_required:'친구 관계인 회원끼리만 거래할 수 있습니다.',trade_unit_missing:'판매자가 해당 캐릭터를 보유하고 있지 않습니다.',trade_buyer_owns:'구매자가 이미 해당 캐릭터를 보유하고 있습니다.',trade_already_listed:'이 캐릭터는 이미 거래 승인 또는 판매 대기 중입니다.',trade_not_available:'구매할 수 있는 승인 상품이 아닙니다.',trade_gold_short:'구매에 필요한 코인이 부족합니다.'};const conflict=['trade_already_listed','trade_buyer_owns','trade_not_available'].includes(error.code);return json(response,messages[error.code]?(conflict?409:400):500,{error:messages[error.code]||'서버 저장 중 오류가 발생했습니다.'});}
+  }catch(error){console.error(error);if(error.code==='friend_request_exists')return json(response,409,{error:'이미 대기 중인 친구 요청이 있습니다.'});if(error.code==='friend_request_not_found')return json(response,404,{error:'친구 요청을 찾을 수 없습니다.'});const messages={23505:'이미 사용 중인 아이디입니다.',coupon_not_found:'존재하지 않거나 종료된 코드예요.',coupon_used:'이미 사용한 코드예요.',account_not_found:'계정을 찾을 수 없습니다.',trade_friend_required:'친구 관계인 회원끼리만 거래할 수 있습니다.',trade_unit_missing:'판매자가 해당 캐릭터를 보유하고 있지 않습니다.',trade_buyer_owns:'구매자가 이미 해당 캐릭터를 보유하고 있습니다.',trade_already_listed:'이 캐릭터는 이미 거래 승인 또는 판매 대기 중입니다.',trade_not_available:'구매할 수 있는 승인 상품이 아닙니다.',trade_gold_short:'구매에 필요한 코인이 부족합니다.',pvp_gold_short:'내기에 필요한 코인이 부족합니다.',pvp_already_active:'이미 진행 중인 PvP 대전이 있습니다.',pvp_player_offline:'상대가 현재 온라인이 아니거나 방금 접속을 종료했습니다.',pvp_player_busy:'상대가 이미 PvP 대전 중입니다.',pvp_invite_missing:'초대장이 만료되었거나 취소되었습니다.'};const conflict=['trade_already_listed','trade_buyer_owns','trade_not_available','pvp_already_active','pvp_player_busy','pvp_invite_missing'].includes(error.code);return json(response,messages[error.code]?(conflict?409:400):500,{error:messages[error.code]||'서버 저장 중 오류가 발생했습니다.'});}
 }
 function handle(request,response){
   const pathname=decodeURIComponent(request.url.split('?')[0]);response.setHeader('X-Content-Type-Options','nosniff');response.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
